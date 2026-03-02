@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="zh-cn">
+<head>
+  <meta charset="UTF-8" />
+  <title>医馆管理简易前端</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { padding: 20px; }
+    .section { margin-bottom: 32px; }
+    .table td { vertical-align: middle; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h3 class="mb-4">医馆管理简易前端（用户/客户）</h3>
+
+  <div class="alert alert-info">
+    API 调试：<a href="/swagger-ui/index.html" target="_blank">Swagger UI</a>
+  </div>
+
+  <div id="status" class="alert alert-secondary py-2 mb-3">就绪</div>
+
+  <script>
+    const API_BASE = '';
+    let token = '';
+
+    function setStatus(msg, isErr=false) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'alert py-2 mb-3 ' + (isErr ? 'alert-danger' : 'alert-success');
+    }
+
+    async function api(path, options = {}) {
+      const headers = options.headers || {};
+      headers['Content-Type'] = 'application/json';
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      const resp = await fetch(API_BASE + path, { ...options, headers });
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(text || resp.status);
+      }
+      const ct = resp.headers.get('content-type') || '';
+      return ct.includes('application/json') ? resp.json() : resp.text();
+    }
+
+    function unwrap(resp) {
+      if (resp && typeof resp === 'object' && 'data' in resp) return resp.data;
+      return resp;
+    }
+    function asList(payload) {
+      if (Array.isArray(payload)) return payload;
+      if (payload && typeof payload === 'object') {
+        if (Array.isArray(payload.items)) return payload.items;
+        if (Array.isArray(payload.list)) return payload.list;
+        if (Array.isArray(payload.data)) return payload.data;
+      }
+      return [];
+    }
+
+    // 登录
+    async function login() {
+      try {
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+        const res = await api('/api/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ username, password })
+        });
+        const d = unwrap(res);
+        token = (d && d.token) || (res && res.token) || '';
+        setStatus('登录成功', false);
+      } catch (e) {
+        setStatus('登录失败: ' + e.message, true);
+      }
+    }
+
+    // 用户 CRUD
+    async function addUser() {
+      try {
+        const payload = {
+          username: document.getElementById('new-username').value,
+          password: document.getElementById('new-password').value,
+          displayName: document.getElementById('new-display').value,
+          role: document.getElementById('new-role').value || 'STAFF',
+          phone: document.getElementById('new-phone').value,
+          active: document.getElementById('new-active').checked
+        };
+        await api('/api/users', { method: 'POST', body: JSON.stringify(payload) });
+        setStatus('新增用户成功');
+        await loadUsers();
+      } catch (e) {
+        setStatus('新增用户失败: ' + e.message, true);
+      }
+    }
+
+    async function updateUser(id, row) {
+      try {
+        const payload = {
+          username: row.querySelector('.u-username').value,
+          displayName: row.querySelector('.u-display').value,
+          role: row.querySelector('.u-role').value,
+          phone: row.querySelector('.u-phone').value,
+          active: row.querySelector('.u-active').checked,
+        };
+        const pwd = row.querySelector('.u-password').value;
+        if (pwd) payload.password = pwd;
+        await api(`/api/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+        setStatus('用户已保存');
+        await loadUsers();
+      } catch (e) {
+        setStatus('保存用户失败: ' + e.message, true);
+      }
+    }
+
+    async function deleteUser(id) {
+      if (!confirm('确认删除该用户？')) return;
+      try {
+        await api(`/api/users/${id}`, { method: 'DELETE' });
+        setStatus('用户已删除');
+        await loadUsers();
+      } catch (e) {
+        setStatus('删除用户失败: ' + e.message, true);
+      }
+    }
+
+    async function loadUsers() {
+      try {
+        const res = await api('/api/users');
+        const list = asList(unwrap(res));
+        const tbody = document.querySelector('#users-table tbody');
+        tbody.innerHTML = '';
+        list.forEach(u => {
+          const display = u.displayName ?? u.display_name ?? '';
+          const phone = u.phone ?? u.phoneNumber ?? '';
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${u.id??''}</td>
+            <td><input class="form-control form-control-sm u-username" value="${u.username??''}"></td>
+            <td><input class="form-control form-control-sm u-display" value="${display}"></td>
+            <td><input class="form-control form-control-sm u-role" value="${u.role??''}"></td>
+            <td><input class="form-control form-control-sm u-phone" value="${phone}"></td>
+            <td class="text-center"><input type="checkbox" class="form-check-input u-active" ${u.active?'checked':''}></td>
+            <td><input class="form-control form-control-sm u-password" type="password" placeholder="留空不改密码"></td>
+            <td class="text-nowrap">
+              <button class="btn btn-sm btn-primary me-1" onclick="updateUser(${u.id}, this.closest('tr'))">保存</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">删除</button>
+            </td>`;
+          tbody.appendChild(tr);
+        });
+        setStatus('用户列表已加载');
+      } catch (e) {
+        setStatus('加载用户失败: ' + e.message, true);
+      }
+    }
+
+    // 客户 CRUD
+    async function addCustomer() {
+      try {
+        const payload = {
+          name: document.getElementById('c-name').value,
+          gender: document.getElementById('c-gender').value,
+          phone: document.getElementById('c-phone').value,
+          email: document.getElementById('c-email').value,
+          tags: document.getElementById('c-tags').value,
+          birthday: document.getElementById('c-birthday').value,
+          note: document.getElementById('c-note').value
+        };
+        await api('/api/customers', { method: 'POST', body: JSON.stringify(payload) });
+        setStatus('新增客户成功');
+        await loadCustomers();
+      } catch (e) {
+        setStatus('新增客户失败: ' + e.message, true);
+      }
+    }
+
+    async function updateCustomer(id, row) {
+      try {
+        const payload = {
+          name: row.querySelector('.c-name').value,
+          gender: row.querySelector('.c-gender').value,
+          phone: row.querySelector('.c-phone').value,
+          email: row.querySelector('.c-email').value,
+          tags: row.querySelector('.c-tags').value,
+          birthday: row.querySelector('.c-birthday').value,
+          note: row.querySelector('.c-note').value
+        };
+        await api(`/api/customers/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+        setStatus('客户已保存');
+        await loadCustomers();
+      } catch (e) {
+        setStatus('保存客户失败: ' + e.message, true);
+      }
+    }
+
+    async function deleteCustomer(id) {
+      if (!confirm('确认删除该客户？')) return;
+      try {
+        await api(`/api/customers/${id}`, { method: 'DELETE' });
+        setStatus('客户已删除');
+        await loadCustomers();
+      } catch (e) {
+        setStatus('删除客户失败: ' + e.message, true);
+      }
+    }
+
+    async function loadCustomers() {
+      try {
+        const res = await api('/api/customers');
+        const list = asList(unwrap(res));
+        const tbody = document.querySelector('#customers-table tbody');
+        tbody.innerHTML = '';
+        list.forEach(c => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${c.id??''}</td>
+            <td><input class="form-control form-control-sm c-name" value="${c.name??''}"></td>
+            <td><input class="form-control form-control-sm c-gender" value="${c.gender??''}"></td>
+            <td><input class="form-control form-control-sm c-phone" value="${c.phone??''}"></td>
+            <td><input class="form-control form-control-sm c-email" value="${c.email??''}"></td>
+            <td><input class="form-control form-control-sm c-tags" value="${c.tags??''}"></td>
+            <td><input class="form-control form-control-sm c-birthday" type="date" value="${c.birthday??''}"></td>
+            <td><input class="form-control form-control-sm c-note" value="${c.note??''}"></td>
+            <td class="text-nowrap">
+              <button class="btn btn-sm btn-primary me-1" onclick="updateCustomer(${c.id}, this.closest('tr'))">保存</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteCustomer(${c.id})">删除</button>
+            </td>`;
+          tbody.appendChild(tr);
+        });
+        setStatus('客户列表已加载');
+      } catch (e) {
+        setStatus('加载客户失败: ' + e.message, true);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadUsers();
+      loadCustomers();
+    });
+  </script>
+
+  <!-- 登录 -->
+  <div class="section card card-body">
+    <h5>登录</h5>
+    <div class="row g-2 align-items-center">
+      <div class="col-md-3"><input class="form-control" id="login-username" placeholder="用户名"></div>
+      <div class="col-md-3"><input class="form-control" id="login-password" type="password" placeholder="密码"></div>
+      <div class="col-md-2"><button class="btn btn-primary w-100" onclick="login()">登录</button></div>
+    </div>
+  </div>
+
+  <!-- 用户管理 -->
+  <div class="section card card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="mb-0">用户管理</h5>
+      <button class="btn btn-outline-secondary btn-sm" onclick="loadUsers()">刷新</button>
+    </div>
+    <table class="table table-sm table-striped" id="users-table">
+      <thead>
+        <tr>
+          <th>ID</th><th>用户名</th><th>姓名</th><th>角色</th><th>电话</th><th>启用</th><th>密码(可选)</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="row g-2 mt-2">
+      <div class="col-md-2"><input class="form-control" id="new-username" placeholder="用户名"></div>
+      <div class="col-md-2"><input class="form-control" id="new-password" type="password" placeholder="密码"></div>
+      <div class="col-md-2"><input class="form-control" id="new-display" placeholder="姓名/显示名"></div>
+      <div class="col-md-2"><input class="form-control" id="new-role" placeholder="角色 如 ADMIN/STAFF" value="STAFF"></div>
+      <div class="col-md-2"><input class="form-control" id="new-phone" placeholder="电话"></div>
+      <div class="col-md-1 d-flex align-items-center">
+        <input class="form-check-input me-2" type="checkbox" id="new-active" checked>
+        <label for="new-active" class="form-check-label">启用</label>
+      </div>
+      <div class="col-md-1"><button class="btn btn-success w-100" onclick="addUser()">新增用户</button></div>
+    </div>
+  </div>
+
+  <!-- 客户管理 -->
+  <div class="section card card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="mb-0">客户管理</h5>
+      <button class="btn btn-outline-secondary btn-sm" onclick="loadCustomers()">刷新</button>
+    </div>
+    <table class="table table-sm table-striped" id="customers-table">
+      <thead>
+        <tr>
+          <th>ID</th><th>姓名</th><th>性别</th><th>电话</th><th>邮箱</th><th>标签</th><th>生日</th><th>备注</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="row g-2 mt-2">
+      <div class="col-md-2"><input class="form-control" id="c-name" placeholder="姓名"></div>
+      <div class="col-md-1"><input class="form-control" id="c-gender" placeholder="性别"></div>
+      <div class="col-md-2"><input class="form-control" id="c-phone" placeholder="电话"></div>
+      <div class="col-md-2"><input class="form-control" id="c-email" placeholder="邮箱"></div>
+      <div class="col-md-2"><input class="form-control" id="c-tags" placeholder="标签"></div>
+      <div class="col-md-1"><input class="form-control" id="c-birthday" type="date" placeholder="生日"></div>
+      <div class="col-md-2"><input class="form-control" id="c-note" placeholder="备注"></div>
+      <div class="col-md-12 mt-2">
+        <button class="btn btn-success" onclick="addCustomer()">新增客户</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

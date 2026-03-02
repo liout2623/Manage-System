@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.CustomerMapper">
+
+    <resultMap id="CustomerResult" type="com.example.demo.domain.Customer">
+        <id column="id" property="id" />
+        <result column="name" property="name" />
+        <result column="phone" property="phone" />
+        <result column="email" property="email" />
+        <result column="gender" property="gender" />
+        <result column="tags" property="tags" />
+        <result column="note" property="note" />
+        <result column="birthday" property="birthday" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+    </resultMap>
+
+    <insert id="insert" parameterType="com.example.demo.domain.Customer" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO customers (name, phone, email, gender, tags, note, birthday, created_at, updated_at)
+        VALUES (#{name}, #{phone}, #{email}, #{gender}, #{tags}, #{note}, #{birthday}, NOW(), NOW())
+    </insert>
+
+    <insert id="batchInsert">
+        INSERT INTO customers (name, phone, email, gender, tags, note, birthday, created_at, updated_at)
+        VALUES
+        <foreach collection="customers" item="item" separator=",">
+            (#{item.name}, #{item.phone}, #{item.email}, #{item.gender}, #{item.tags}, #{item.note}, #{item.birthday}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+    <delete id="deleteById">
+        DELETE FROM customers WHERE id = #{id}
+    </delete>
+
+    <update id="update">
+        UPDATE customers
+        SET name = #{name},
+            phone = #{phone},
+            email = #{email},
+            gender = #{gender},
+            tags = #{tags},
+            note = #{note},
+            birthday = #{birthday},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <select id="findById" parameterType="long" resultMap="CustomerResult">
+        SELECT * FROM customers WHERE id = #{id}
+    </select>
+
+    <select id="findAll" resultType="com.example.demo.domain.Customer">
+        SELECT *
+        FROM customers
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (name LIKE CONCAT('%', #{keyword}, '%')
+                     OR phone LIKE CONCAT('%', #{keyword}, '%')
+                     OR tags LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(1)
+        FROM customers
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (name LIKE CONCAT('%', #{keyword}, '%')
+                     OR phone LIKE CONCAT('%', #{keyword}, '%')
+                     OR tags LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </select>
+</mapper>

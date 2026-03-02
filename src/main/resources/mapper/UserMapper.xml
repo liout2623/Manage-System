@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.UserMapper">
+
+    <resultMap id="UserResult" type="com.example.demo.domain.UserAccount">
+        <id column="id" property="id" />
+        <result column="username" property="username" />
+        <result column="password_hash" property="passwordHash" />
+        <result column="role" property="role" />
+        <result column="display_name" property="displayName" />
+        <result column="phone" property="phone" />
+        <result column="active" property="active" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+    </resultMap>
+
+    <insert id="insert" parameterType="com.example.demo.domain.UserAccount" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO users (username, password_hash, role, display_name, phone, active, created_at, updated_at)
+        VALUES (#{username}, #{passwordHash}, #{role}, #{displayName}, #{phone}, #{active}, NOW(), NOW())
+    </insert>
+
+    <delete id="deleteById">
+        DELETE FROM users WHERE id = #{id}
+    </delete>
+
+    <update id="update" parameterType="com.example.demo.domain.UserAccount">
+        UPDATE users
+        SET username = #{username},
+            password_hash = COALESCE(#{passwordHash}, password_hash),
+            role = #{role},
+            display_name = #{displayName},
+            phone = #{phone},
+            active = #{active},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <select id="findById" parameterType="long" resultMap="UserResult">
+        SELECT * FROM users WHERE id = #{id}
+    </select>
+
+    <select id="findByUsername" parameterType="string" resultMap="UserResult">
+        SELECT * FROM users WHERE username = #{username}
+    </select>
+
+    <select id="findAll" resultMap="UserResult">
+        SELECT
+            id,
+            username,
+            display_name,
+            role,
+            phone,
+            active,
+            password_hash,
+            created_at,
+            updated_at
+        FROM users
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (username LIKE CONCAT('%', #{keyword}, '%')
+                     OR display_name LIKE CONCAT('%', #{keyword}, '%')
+                     OR phone LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="role != null and role != ''">
+                AND role = #{role}
+            </if>
+            <if test="active != null">
+                AND active = #{active}
+            </if>
+        </where>
+        ORDER BY id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(1)
+        FROM users
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (username LIKE CONCAT('%', #{keyword}, '%')
+                     OR display_name LIKE CONCAT('%', #{keyword}, '%')
+                     OR phone LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="role != null and role != ''">
+                AND role = #{role}
+            </if>
+            <if test="active != null">
+                AND active = #{active}
+            </if>
+        </where>
+    </select>
+</mapper>
