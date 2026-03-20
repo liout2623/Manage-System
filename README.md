@@ -72,7 +72,8 @@ Manage-System/
     │       │   ├── UserMapper.xml       # 用户 MyBatis SQL 映射文件
     │       │   └── CustomerMapper.xml   # 客户 MyBatis SQL 映射文件
     │       └── static/
-    │           └── index.html           # 内嵌前端页面（Bootstrap 5）
+    │           ├── index.html           # 登录页面（管理员入口，Bootstrap 5）
+    │           └── dashboard.html       # 管理主界面（用户管理 + 客户管理，需登录后访问）
     └── test/
         └── java/com/example/demo/
             └── DemoApplicationTests.java  # Spring 上下文加载冒烟测试
@@ -395,16 +396,25 @@ spring.jackson.date-format=yyyy-MM-dd'T'HH:mm:ss
 
 ---
 
-## 八、前端页面（`index.html`）
+## 八、前端页面
 
-- **路径**：`src/main/resources/static/index.html`
-- **访问**：启动后浏览器访问 `http://localhost:8080/`
-- **技术**：Bootstrap 5.3.3（CDN）+ 原生 JavaScript（`fetch` API）
+前端由两个静态 HTML 文件组成，均位于 `src/main/resources/static/`，Spring Boot 自动托管。
+
+### 登录页（`index.html`）
+
+- **访问**：`http://localhost:8080/`
+- **功能**：管理员登录入口；登录失败弹出 Bootstrap Modal 消息框；登录成功将 token 写入 `localStorage` 并跳转到 `dashboard.html`
+- **技术**：Bootstrap 5.3.3 + Bootstrap Icons（CDN）+ 原生 `fetch` API
+
+### 管理主界面（`dashboard.html`）
+
+- **访问**：`http://localhost:8080/dashboard.html`（需先登录）
 - **功能**：
-  - 登录表单（获取 token）
-  - 用户列表的增删改查
-  - 客户列表的增删改查
-- **认证方式**：登录后将 token 存储在内存变量中，后续请求自动添加 `Authorization: Bearer <token>` 请求头
+  - 顶部渐变导航栏：品牌名 + 用户管理/客户管理 Tab + 当前用户 + 退出登录
+  - **用户管理 Tab**：关键词搜索、角色筛选、分页列表（角色/状态 Badge）、模态框新增/编辑、删除确认
+  - **客户管理 Tab**：关键词搜索、分页列表（标签 Chip 展示）、模态框新增/编辑、删除确认
+  - Toast 全局操作通知（成功/失败）
+- **认证方式**：从 `localStorage` 读取 token，后续请求自动添加 `Authorization: Bearer <token>` 请求头；未登录则自动重定向回 `/`
 
 ---
 

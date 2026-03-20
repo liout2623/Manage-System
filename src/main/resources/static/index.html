@@ -2,308 +2,208 @@
 <html lang="zh-cn">
 <head>
   <meta charset="UTF-8" />
-  <title>医馆管理简易前端</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>医馆管理系统 — 登录</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <style>
-    body { padding: 20px; }
-    .section { margin-bottom: 32px; }
-    .table td { vertical-align: middle; }
+    :root {
+      --brand: #0d9488;
+      --brand-dark: #0f766e;
+      --brand-end: #0891b2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(135deg, #134e4a 0%, #0d9488 55%, #0891b2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    }
+    .login-wrap { width: 100%; max-width: 420px; padding: 16px; }
+    .login-card {
+      border: none;
+      border-radius: 20px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.28);
+      overflow: hidden;
+    }
+    .login-head {
+      background: linear-gradient(135deg, var(--brand), var(--brand-end));
+      padding: 40px 40px 30px;
+      text-align: center;
+      color: #fff;
+    }
+    .login-head .icon-wrap {
+      width: 76px; height: 76px;
+      background: rgba(255,255,255,0.18);
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 38px;
+      margin-bottom: 14px;
+      backdrop-filter: blur(8px);
+    }
+    .login-head h4 { font-weight: 700; font-size: 1.45rem; margin-bottom: 4px; }
+    .login-head p  { opacity: .8; font-size: .9rem; margin: 0; }
+    .login-body { padding: 36px 40px 32px; background: #fff; }
+    .form-label  { font-weight: 500; color: #374151; font-size: .875rem; margin-bottom: 6px; }
+    .input-wrap  { position: relative; }
+    .input-wrap .bi {
+      position: absolute; left: 13px; top: 50%;
+      transform: translateY(-50%); color: #9ca3af; font-size: 1rem;
+    }
+    .input-wrap .form-control { padding-left: 38px; }
+    .form-control {
+      border-radius: 10px;
+      border: 1.5px solid #e5e7eb;
+      padding: 10px 14px;
+      font-size: .95rem;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .form-control:focus {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(13,148,136,.14);
+      outline: none;
+    }
+    .btn-login {
+      background: linear-gradient(135deg, var(--brand), var(--brand-end));
+      border: none; border-radius: 10px;
+      padding: 12px; font-size: 1rem; font-weight: 600;
+      letter-spacing: .04em; color: #fff; width: 100%;
+      transition: opacity .2s, transform .1s;
+      cursor: pointer;
+    }
+    .btn-login:hover  { opacity: .9; transform: translateY(-1px); color: #fff; }
+    .btn-login:active { transform: translateY(0); }
+    .btn-login:disabled { opacity: .65; transform: none; cursor: default; }
+    .foot { text-align: center; color: #9ca3af; font-size: .78rem; margin-top: 20px; }
+
+    /* Modal tweaks */
+    .modal-content { border: none; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,.18); }
+    .modal-header  { border-bottom: 1px solid #f1f5f9; padding: 20px 24px; }
+    .modal-title   { font-weight: 700; color: #1e293b; font-size: 1rem; }
+    .modal-body    { padding: 24px; }
+    .modal-footer  { border-top: 1px solid #f1f5f9; padding: 14px 24px; }
+    .btn-ok {
+      background: linear-gradient(135deg, var(--brand), var(--brand-end));
+      border: none; color: #fff; border-radius: 8px; padding: 8px 22px; font-weight: 600;
+    }
+    .btn-ok:hover { opacity: .9; color: #fff; }
   </style>
 </head>
 <body>
-<div class="container">
-  <h3 class="mb-4">医馆管理简易前端（用户/客户）</h3>
 
-  <div class="alert alert-info">
-    API 调试：<a href="/swagger-ui/index.html" target="_blank">Swagger UI</a>
-  </div>
+<div class="login-wrap">
+  <div class="login-card">
+    <!-- Header -->
+    <div class="login-head">
+      <div class="icon-wrap">🏥</div>
+      <h4>医馆管理系统</h4>
+      <p>Medical Spa Management</p>
+    </div>
 
-  <div id="status" class="alert alert-secondary py-2 mb-3">就绪</div>
-
-  <script>
-    const API_BASE = '';
-    let token = '';
-
-    function setStatus(msg, isErr=false) {
-      const el = document.getElementById('status');
-      el.textContent = msg;
-      el.className = 'alert py-2 mb-3 ' + (isErr ? 'alert-danger' : 'alert-success');
-    }
-
-    async function api(path, options = {}) {
-      const headers = options.headers || {};
-      headers['Content-Type'] = 'application/json';
-      if (token) headers['Authorization'] = 'Bearer ' + token;
-      const resp = await fetch(API_BASE + path, { ...options, headers });
-      if (!resp.ok) {
-        const text = await resp.text();
-        throw new Error(text || resp.status);
-      }
-      const ct = resp.headers.get('content-type') || '';
-      return ct.includes('application/json') ? resp.json() : resp.text();
-    }
-
-    function unwrap(resp) {
-      if (resp && typeof resp === 'object' && 'data' in resp) return resp.data;
-      return resp;
-    }
-    function asList(payload) {
-      if (Array.isArray(payload)) return payload;
-      if (payload && typeof payload === 'object') {
-        if (Array.isArray(payload.items)) return payload.items;
-        if (Array.isArray(payload.list)) return payload.list;
-        if (Array.isArray(payload.data)) return payload.data;
-      }
-      return [];
-    }
-
-    // 登录
-    async function login() {
-      try {
-        const username = document.getElementById('login-username').value;
-        const password = document.getElementById('login-password').value;
-        const res = await api('/api/auth/login', {
-          method: 'POST',
-          body: JSON.stringify({ username, password })
-        });
-        const d = unwrap(res);
-        token = (d && d.token) || (res && res.token) || '';
-        setStatus('登录成功', false);
-      } catch (e) {
-        setStatus('登录失败: ' + e.message, true);
-      }
-    }
-
-    // 用户 CRUD
-    async function addUser() {
-      try {
-        const payload = {
-          username: document.getElementById('new-username').value,
-          password: document.getElementById('new-password').value,
-          displayName: document.getElementById('new-display').value,
-          role: document.getElementById('new-role').value || 'STAFF',
-          phone: document.getElementById('new-phone').value,
-          active: document.getElementById('new-active').checked
-        };
-        await api('/api/users', { method: 'POST', body: JSON.stringify(payload) });
-        setStatus('新增用户成功');
-        await loadUsers();
-      } catch (e) {
-        setStatus('新增用户失败: ' + e.message, true);
-      }
-    }
-
-    async function updateUser(id, row) {
-      try {
-        const payload = {
-          username: row.querySelector('.u-username').value,
-          displayName: row.querySelector('.u-display').value,
-          role: row.querySelector('.u-role').value,
-          phone: row.querySelector('.u-phone').value,
-          active: row.querySelector('.u-active').checked,
-        };
-        const pwd = row.querySelector('.u-password').value;
-        if (pwd) payload.password = pwd;
-        await api(`/api/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-        setStatus('用户已保存');
-        await loadUsers();
-      } catch (e) {
-        setStatus('保存用户失败: ' + e.message, true);
-      }
-    }
-
-    async function deleteUser(id) {
-      if (!confirm('确认删除该用户？')) return;
-      try {
-        await api(`/api/users/${id}`, { method: 'DELETE' });
-        setStatus('用户已删除');
-        await loadUsers();
-      } catch (e) {
-        setStatus('删除用户失败: ' + e.message, true);
-      }
-    }
-
-    async function loadUsers() {
-      try {
-        const res = await api('/api/users');
-        const list = asList(unwrap(res));
-        const tbody = document.querySelector('#users-table tbody');
-        tbody.innerHTML = '';
-        list.forEach(u => {
-          const display = u.displayName ?? u.display_name ?? '';
-          const phone = u.phone ?? u.phoneNumber ?? '';
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${u.id??''}</td>
-            <td><input class="form-control form-control-sm u-username" value="${u.username??''}"></td>
-            <td><input class="form-control form-control-sm u-display" value="${display}"></td>
-            <td><input class="form-control form-control-sm u-role" value="${u.role??''}"></td>
-            <td><input class="form-control form-control-sm u-phone" value="${phone}"></td>
-            <td class="text-center"><input type="checkbox" class="form-check-input u-active" ${u.active?'checked':''}></td>
-            <td><input class="form-control form-control-sm u-password" type="password" placeholder="留空不改密码"></td>
-            <td class="text-nowrap">
-              <button class="btn btn-sm btn-primary me-1" onclick="updateUser(${u.id}, this.closest('tr'))">保存</button>
-              <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">删除</button>
-            </td>`;
-          tbody.appendChild(tr);
-        });
-        setStatus('用户列表已加载');
-      } catch (e) {
-        setStatus('加载用户失败: ' + e.message, true);
-      }
-    }
-
-    // 客户 CRUD
-    async function addCustomer() {
-      try {
-        const payload = {
-          name: document.getElementById('c-name').value,
-          gender: document.getElementById('c-gender').value,
-          phone: document.getElementById('c-phone').value,
-          email: document.getElementById('c-email').value,
-          tags: document.getElementById('c-tags').value,
-          birthday: document.getElementById('c-birthday').value,
-          note: document.getElementById('c-note').value
-        };
-        await api('/api/customers', { method: 'POST', body: JSON.stringify(payload) });
-        setStatus('新增客户成功');
-        await loadCustomers();
-      } catch (e) {
-        setStatus('新增客户失败: ' + e.message, true);
-      }
-    }
-
-    async function updateCustomer(id, row) {
-      try {
-        const payload = {
-          name: row.querySelector('.c-name').value,
-          gender: row.querySelector('.c-gender').value,
-          phone: row.querySelector('.c-phone').value,
-          email: row.querySelector('.c-email').value,
-          tags: row.querySelector('.c-tags').value,
-          birthday: row.querySelector('.c-birthday').value,
-          note: row.querySelector('.c-note').value
-        };
-        await api(`/api/customers/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-        setStatus('客户已保存');
-        await loadCustomers();
-      } catch (e) {
-        setStatus('保存客户失败: ' + e.message, true);
-      }
-    }
-
-    async function deleteCustomer(id) {
-      if (!confirm('确认删除该客户？')) return;
-      try {
-        await api(`/api/customers/${id}`, { method: 'DELETE' });
-        setStatus('客户已删除');
-        await loadCustomers();
-      } catch (e) {
-        setStatus('删除客户失败: ' + e.message, true);
-      }
-    }
-
-    async function loadCustomers() {
-      try {
-        const res = await api('/api/customers');
-        const list = asList(unwrap(res));
-        const tbody = document.querySelector('#customers-table tbody');
-        tbody.innerHTML = '';
-        list.forEach(c => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${c.id??''}</td>
-            <td><input class="form-control form-control-sm c-name" value="${c.name??''}"></td>
-            <td><input class="form-control form-control-sm c-gender" value="${c.gender??''}"></td>
-            <td><input class="form-control form-control-sm c-phone" value="${c.phone??''}"></td>
-            <td><input class="form-control form-control-sm c-email" value="${c.email??''}"></td>
-            <td><input class="form-control form-control-sm c-tags" value="${c.tags??''}"></td>
-            <td><input class="form-control form-control-sm c-birthday" type="date" value="${c.birthday??''}"></td>
-            <td><input class="form-control form-control-sm c-note" value="${c.note??''}"></td>
-            <td class="text-nowrap">
-              <button class="btn btn-sm btn-primary me-1" onclick="updateCustomer(${c.id}, this.closest('tr'))">保存</button>
-              <button class="btn btn-sm btn-danger" onclick="deleteCustomer(${c.id})">删除</button>
-            </td>`;
-          tbody.appendChild(tr);
-        });
-        setStatus('客户列表已加载');
-      } catch (e) {
-        setStatus('加载客户失败: ' + e.message, true);
-      }
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      loadUsers();
-      loadCustomers();
-    });
-  </script>
-
-  <!-- 登录 -->
-  <div class="section card card-body">
-    <h5>登录</h5>
-    <div class="row g-2 align-items-center">
-      <div class="col-md-3"><input class="form-control" id="login-username" placeholder="用户名"></div>
-      <div class="col-md-3"><input class="form-control" id="login-password" type="password" placeholder="密码"></div>
-      <div class="col-md-2"><button class="btn btn-primary w-100" onclick="login()">登录</button></div>
+    <!-- Form -->
+    <div class="login-body">
+      <form id="login-form" onsubmit="return false;">
+        <div class="mb-3">
+          <label for="f-username" class="form-label">用户名</label>
+          <div class="input-wrap">
+            <i class="bi bi-person"></i>
+            <input type="text" class="form-control" id="f-username"
+                   placeholder="请输入用户名" autocomplete="username">
+          </div>
+        </div>
+        <div class="mb-4">
+          <label for="f-password" class="form-label">密码</label>
+          <div class="input-wrap">
+            <i class="bi bi-lock"></i>
+            <input type="password" class="form-control" id="f-password"
+                   placeholder="请输入密码" autocomplete="current-password">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-login" id="login-btn" onclick="doLogin()">
+          <span id="btn-text">登&nbsp;&nbsp;录</span>
+          <span id="btn-spin" class="spinner-border spinner-border-sm ms-2 d-none" role="status"></span>
+        </button>
+      </form>
+      <p class="foot">© 2024 医馆管理系统</p>
     </div>
   </div>
-
-  <!-- 用户管理 -->
-  <div class="section card card-body">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h5 class="mb-0">用户管理</h5>
-      <button class="btn btn-outline-secondary btn-sm" onclick="loadUsers()">刷新</button>
-    </div>
-    <table class="table table-sm table-striped" id="users-table">
-      <thead>
-        <tr>
-          <th>ID</th><th>用户名</th><th>姓名</th><th>角色</th><th>电话</th><th>启用</th><th>密码(可选)</th><th>操作</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <div class="row g-2 mt-2">
-      <div class="col-md-2"><input class="form-control" id="new-username" placeholder="用户名"></div>
-      <div class="col-md-2"><input class="form-control" id="new-password" type="password" placeholder="密码"></div>
-      <div class="col-md-2"><input class="form-control" id="new-display" placeholder="姓名/显示名"></div>
-      <div class="col-md-2"><input class="form-control" id="new-role" placeholder="角色 如 ADMIN/STAFF" value="STAFF"></div>
-      <div class="col-md-2"><input class="form-control" id="new-phone" placeholder="电话"></div>
-      <div class="col-md-1 d-flex align-items-center">
-        <input class="form-check-input me-2" type="checkbox" id="new-active" checked>
-        <label for="new-active" class="form-check-label">启用</label>
-      </div>
-      <div class="col-md-1"><button class="btn btn-success w-100" onclick="addUser()">新增用户</button></div>
-    </div>
-  </div>
-
-  <!-- 客户管理 -->
-  <div class="section card card-body">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h5 class="mb-0">客户管理</h5>
-      <button class="btn btn-outline-secondary btn-sm" onclick="loadCustomers()">刷新</button>
-    </div>
-    <table class="table table-sm table-striped" id="customers-table">
-      <thead>
-        <tr>
-          <th>ID</th><th>姓名</th><th>性别</th><th>电话</th><th>邮箱</th><th>标签</th><th>生日</th><th>备注</th><th>操作</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <div class="row g-2 mt-2">
-      <div class="col-md-2"><input class="form-control" id="c-name" placeholder="姓名"></div>
-      <div class="col-md-1"><input class="form-control" id="c-gender" placeholder="性别"></div>
-      <div class="col-md-2"><input class="form-control" id="c-phone" placeholder="电话"></div>
-      <div class="col-md-2"><input class="form-control" id="c-email" placeholder="邮箱"></div>
-      <div class="col-md-2"><input class="form-control" id="c-tags" placeholder="标签"></div>
-      <div class="col-md-1"><input class="form-control" id="c-birthday" type="date" placeholder="生日"></div>
-      <div class="col-md-2"><input class="form-control" id="c-note" placeholder="备注"></div>
-      <div class="col-md-12 mt-2">
-        <button class="btn btn-success" onclick="addCustomer()">新增客户</button>
-      </div>
-    </div>
-  </div>
-
 </div>
+
+<!-- 登录失败 Modal 消息框 -->
+<div class="modal fade" id="errModal" tabindex="-1" aria-labelledby="errModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:360px">
+    <div class="modal-content text-center">
+      <div class="modal-header border-0 pb-0 justify-content-center">
+        <span style="font-size:2.4rem">⚠️</span>
+      </div>
+      <div class="modal-body pt-2">
+        <h5 class="modal-title mb-2" id="errModalLabel">登录失败</h5>
+        <p id="err-detail" class="text-muted mb-0" style="font-size:.9rem">用户名或密码错误，请重试。</p>
+      </div>
+      <div class="modal-footer border-0 justify-content-center pt-0">
+        <button type="button" class="btn btn-ok" data-bs-dismiss="modal">确&nbsp;&nbsp;定</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // 已登录则直接跳转
+  if (localStorage.getItem('token')) {
+    window.location.replace('/dashboard.html');
+  }
+
+  const errModal = new bootstrap.Modal(document.getElementById('errModal'));
+
+  function showErr(msg) {
+    document.getElementById('err-detail').textContent = msg || '用户名或密码错误，请重试。';
+    errModal.show();
+  }
+
+  async function doLogin() {
+    const username = document.getElementById('f-username').value.trim();
+    const password = document.getElementById('f-password').value;
+    if (!username || !password) { showErr('请输入用户名和密码。'); return; }
+
+    const btn = document.getElementById('login-btn');
+    btn.disabled = true;
+    document.getElementById('btn-text').textContent = '登录中…';
+    document.getElementById('btn-spin').classList.remove('d-none');
+
+    try {
+      const resp = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const body = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        const msg = body.message || body.error || '用户名或密码错误，请重试。';
+        showErr(msg);
+        return;
+      }
+      const data = body.data || body;
+      localStorage.setItem('token', data.token || '');
+      localStorage.setItem('currentUser', JSON.stringify(data.user || {}));
+      window.location.replace('/dashboard.html');
+    } catch (e) {
+      showErr('网络异常，请检查连接后重试。');
+    } finally {
+      btn.disabled = false;
+      document.getElementById('btn-text').innerHTML = '登&nbsp;&nbsp;录';
+      document.getElementById('btn-spin').classList.add('d-none');
+    }
+  }
+
+  document.getElementById('login-form').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+</script>
 </body>
 </html>
