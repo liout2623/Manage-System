@@ -220,20 +220,17 @@
 </head>
 <body>
 
-<!-- ════════════════ Navbar ════════════════ -->
 <nav class="app-nav">
   <a class="brand" href="#">🏥 医馆管理系统</a>
 
   <ul class="nav-tabs-bar">
     <li>
-      <button class="tab-btn active" id="tab-users"
-              onclick="switchTab('users')">
+      <button class="tab-btn active" id="tab-users" onclick="switchTab('users')">
         <i class="bi bi-people-fill"></i>用户管理
       </button>
     </li>
     <li>
-      <button class="tab-btn" id="tab-customers"
-              onclick="switchTab('customers')">
+      <button class="tab-btn" id="tab-customers" onclick="switchTab('customers')">
         <i class="bi bi-person-heart-fill"></i>客户管理
       </button>
     </li>
@@ -250,10 +247,8 @@
   </div>
 </nav>
 
-<!-- ════════════════ Main ════════════════ -->
 <div class="page container-fluid px-3 px-lg-5">
 
-  <!-- ── 用户管理面板 ── -->
   <div id="panel-users">
     <div class="s-card">
       <div class="s-card-head">
@@ -263,8 +258,7 @@
         <div class="toolbar">
           <div class="search-box">
             <i class="bi bi-search"></i>
-            <input type="text" id="user-kw" placeholder="搜索用户名、姓名、电话…"
-                   oninput="debounce('u', () => loadUsers())">
+            <input type="text" id="user-kw" placeholder="搜索用户名、姓名、电话…" oninput="debounce('u', () => loadUsers())">
           </div>
           <select class="filter-select" id="user-role-filter" onchange="loadUsers()">
             <option value="">全部角色</option>
@@ -297,7 +291,6 @@
     </div>
   </div>
 
-  <!-- ── 客户管理面板 ── -->
   <div id="panel-customers" style="display:none">
     <div class="s-card">
       <div class="s-card-head">
@@ -307,8 +300,7 @@
         <div class="toolbar">
           <div class="search-box">
             <i class="bi bi-search"></i>
-            <input type="text" id="cust-kw" placeholder="搜索姓名、电话、标签…"
-                   oninput="debounce('c', () => loadCustomers())">
+            <input type="text" id="cust-kw" placeholder="搜索姓名、电话、标签…" oninput="debounce('c', () => loadCustomers())">
           </div>
           <button class="btn-refresh" onclick="loadCustomers()">
             <i class="bi bi-arrow-clockwise"></i>刷新
@@ -336,9 +328,8 @@
     </div>
   </div>
 
-</div><!-- /page -->
+</div>
 
-<!-- ════════════════ 用户 Modal ════════════════ -->
 <div class="modal fade" id="userModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -388,7 +379,6 @@
   </div>
 </div>
 
-<!-- ════════════════ 客户 Modal ════════════════ -->
 <div class="modal fade" id="custModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
@@ -442,19 +432,16 @@
   </div>
 </div>
 
-<!-- Toast container -->
 <div class="toast-box" id="toast-box"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 'use strict';
 
-/* ── Auth guard ──────────────────────────────────────────── */
 const TOKEN = localStorage.getItem('token') || '';
 if (!TOKEN) { window.location.replace('/'); }
 const CUR = JSON.parse(localStorage.getItem('currentUser') || '{}');
-document.getElementById('nav-name').textContent =
-  CUR.displayName || CUR.username || '管理员';
+document.getElementById('nav-name').textContent = CUR.displayName || CUR.username || '管理员';
 
 function logout() {
   localStorage.removeItem('token');
@@ -462,7 +449,6 @@ function logout() {
   window.location.replace('/');
 }
 
-/* ── Tab switching ───────────────────────────────────────── */
 function switchTab(tab) {
   ['users','customers'].forEach(t => {
     document.getElementById('panel-' + t).style.display = t === tab ? '' : 'none';
@@ -470,10 +456,8 @@ function switchTab(tab) {
   });
 }
 
-/* ── API helper ──────────────────────────────────────────── */
 async function api(path, opts = {}) {
-  const headers = { 'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + TOKEN };
+  const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN };
   const resp = await fetch(path, { ...opts, headers: { ...headers, ...(opts.headers||{}) } });
   if (resp.status === 401) { logout(); return; }
   if (!resp.ok) {
@@ -492,22 +476,16 @@ function asList(p) {
   if (p && Array.isArray(p.list))  return p.list;
   return [];
 }
-
-/* ── HTML escape ─────────────────────────────────────────── */
 function esc(s) {
   const d = document.createElement('div');
   d.appendChild(document.createTextNode(s == null ? '' : String(s)));
   return d.innerHTML;
 }
-
-/* ── Debounce for search ─────────────────────────────────── */
 const _timers = {};
 function debounce(key, fn, ms = 320) {
   clearTimeout(_timers[key]);
   _timers[key] = setTimeout(fn, ms);
 }
-
-/* ── Toast ───────────────────────────────────────────────── */
 function toast(msg, err = false) {
   const box = document.getElementById('toast-box');
   const id  = 'ti' + Date.now();
@@ -518,8 +496,6 @@ function toast(msg, err = false) {
     </div>`);
   setTimeout(() => { const el = document.getElementById(id); if (el) el.remove(); }, 3000);
 }
-
-/* ── Format birthday (handles array or string) ───────────── */
 function fmtDate(d) {
   if (!d) return '—';
   if (Array.isArray(d)) return `${d[0]}-${String(d[1]).padStart(2,'0')}-${String(d[2]).padStart(2,'0')}`;
@@ -531,19 +507,23 @@ function fmtDateVal(d) {
   return String(d).slice(0, 10);
 }
 
-/* ════════ USERS ════════════════════════════════════════════ */
-let _users = {};   // id → object cache
+/* USERS */
+let _users = {};
 
 async function loadUsers() {
   const kw   = document.getElementById('user-kw').value.trim();
   const role = document.getElementById('user-role-filter').value;
   const p = new URLSearchParams({ size: 200 });
-  if (kw)   p.set('keyword', kw);
+  if (kw) p.set('keyword', kw);
   if (role) p.set('role', role);
   try {
     const raw  = await api('/api/users?' + p);
     const data = unwrap(raw);
     const list = asList(data);
+
+    // 按 ID 正序（从小到大）
+    list.sort((a, b) => Number(a.id) - Number(b.id));
+
     const total = (data && data.total != null) ? data.total : list.length;
     list.forEach(u => { _users[u.id] = u; });
     renderUsers(list);
@@ -554,15 +534,12 @@ async function loadUsers() {
 function renderUsers(list) {
   const tbody = document.getElementById('users-body');
   if (!list.length) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-st">
-      <i class="bi bi-inbox"></i><span>暂无用户数据</span></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-st"><i class="bi bi-inbox"></i><span>暂无用户数据</span></div></td></tr>`;
     return;
   }
   tbody.innerHTML = list.map(u => {
     const roleCls = u.role === 'ADMIN' ? 'badge-role badge-admin' : 'badge-role';
-    const stsBadge = u.active
-      ? `<span class="badge-on">● 启用</span>`
-      : `<span class="badge-off">● 停用</span>`;
+    const stsBadge = u.active ? `<span class="badge-on">● 启用</span>` : `<span class="badge-off">● 停用</span>`;
     return `<tr>
       <td class="id-cell">#${u.id}</td>
       <td class="strong-cell">${esc(u.username)}</td>
@@ -571,12 +548,8 @@ function renderUsers(list) {
       <td>${esc(u.phone || '—')}</td>
       <td>${stsBadge}</td>
       <td class="text-nowrap">
-        <button class="btn-edit me-1" onclick="openUserModal(${u.id})">
-          <i class="bi bi-pencil me-1"></i>编辑
-        </button>
-        <button class="btn-del" onclick="delUser(${u.id})">
-          <i class="bi bi-trash me-1"></i>删除
-        </button>
+        <button class="btn-edit me-1" onclick="openUserModal(${u.id})"><i class="bi bi-pencil me-1"></i>编辑</button>
+        <button class="btn-del" onclick="delUser(${u.id})"><i class="bi bi-trash me-1"></i>删除</button>
       </td></tr>`;
   }).join('');
 }
@@ -586,11 +559,11 @@ function openUserModal(id) {
   const u = isEdit ? (_users[id] || {}) : {};
   document.getElementById('userModalTitle').textContent = isEdit ? '编辑用户' : '新增用户';
   document.getElementById('u-id').value       = isEdit ? id : '';
-  document.getElementById('u-username').value = u.username   || '';
-  document.getElementById('u-display').value  = u.displayName|| '';
+  document.getElementById('u-username').value = u.username || '';
+  document.getElementById('u-display').value  = u.displayName || '';
   document.getElementById('u-password').value = '';
-  document.getElementById('u-phone').value    = u.phone      || '';
-  document.getElementById('u-role').value     = u.role       || 'STAFF';
+  document.getElementById('u-phone').value    = u.phone || '';
+  document.getElementById('u-role').value     = u.role || 'STAFF';
   document.getElementById('u-active').checked = isEdit ? !!u.active : true;
   document.getElementById('u-pwd-label').innerHTML = isEdit
     ? '密码 <small class="text-muted fw-normal">（留空不修改）</small>'
@@ -613,11 +586,8 @@ async function saveUser() {
   if (!payload.username || !payload.displayName) { toast('请填写用户名和姓名', true); return; }
   if (!isEdit && !pwd) { toast('请输入密码', true); return; }
   try {
-    if (isEdit) {
-      await api(`/api/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-    } else {
-      await api('/api/users', { method: 'POST', body: JSON.stringify(payload) });
-    }
+    if (isEdit) await api(`/api/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    else await api('/api/users', { method: 'POST', body: JSON.stringify(payload) });
     bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
     toast(isEdit ? '用户信息已更新' : '用户创建成功');
     await loadUsers();
@@ -633,7 +603,7 @@ async function delUser(id) {
   } catch (e) { toast('删除失败：' + e.message, true); }
 }
 
-/* ════════ CUSTOMERS ════════════════════════════════════════ */
+/* CUSTOMERS */
 let _custs = {};
 
 async function loadCustomers() {
@@ -644,6 +614,10 @@ async function loadCustomers() {
     const raw  = await api('/api/customers?' + p);
     const data = unwrap(raw);
     const list = asList(data);
+
+    // 按 ID 正序（从小到大）
+    list.sort((a, b) => Number(a.id) - Number(b.id));
+
     const total = (data && data.total != null) ? data.total : list.length;
     list.forEach(c => { _custs[c.id] = c; });
     renderCustomers(list);
@@ -654,28 +628,22 @@ async function loadCustomers() {
 function renderCustomers(list) {
   const tbody = document.getElementById('custs-body');
   if (!list.length) {
-    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-st">
-      <i class="bi bi-inbox"></i><span>暂无客户数据</span></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-st"><i class="bi bi-inbox"></i><span>暂无客户数据</span></div></td></tr>`;
     return;
   }
   tbody.innerHTML = list.map(c => {
-    const chips = (c.tags || '').split(',').filter(Boolean)
-      .map(t => `<span class="tag-chip">${esc(t.trim())}</span>`).join('');
+    const chips = (c.tags || '').split(',').filter(Boolean).map(t => `<span class="tag-chip">${esc(t.trim())}</span>`).join('');
     return `<tr>
       <td class="id-cell">#${c.id}</td>
       <td class="strong-cell">${esc(c.name)}</td>
       <td>${esc(c.gender || '—')}</td>
-      <td>${esc(c.phone  || '—')}</td>
-      <td>${esc(c.email  || '—')}</td>
+      <td>${esc(c.phone || '—')}</td>
+      <td>${esc(c.email || '—')}</td>
       <td>${chips || '<span class="text-muted">—</span>'}</td>
       <td>${fmtDate(c.birthday)}</td>
       <td class="text-nowrap">
-        <button class="btn-edit me-1" onclick="openCustModal(${c.id})">
-          <i class="bi bi-pencil me-1"></i>编辑
-        </button>
-        <button class="btn-del" onclick="delCustomer(${c.id})">
-          <i class="bi bi-trash me-1"></i>删除
-        </button>
+        <button class="btn-edit me-1" onclick="openCustModal(${c.id})"><i class="bi bi-pencil me-1"></i>编辑</button>
+        <button class="btn-del" onclick="delCustomer(${c.id})"><i class="bi bi-trash me-1"></i>删除</button>
       </td></tr>`;
   }).join('');
 }
@@ -685,13 +653,13 @@ function openCustModal(id) {
   const c = isEdit ? (_custs[id] || {}) : {};
   document.getElementById('custModalTitle').textContent = isEdit ? '编辑客户' : '新增客户';
   document.getElementById('c-id').value       = isEdit ? id : '';
-  document.getElementById('c-name').value     = c.name     || '';
-  document.getElementById('c-gender').value   = c.gender   || '';
-  document.getElementById('c-phone').value    = c.phone    || '';
-  document.getElementById('c-email').value    = c.email    || '';
-  document.getElementById('c-tags').value     = c.tags     || '';
+  document.getElementById('c-name').value     = c.name || '';
+  document.getElementById('c-gender').value   = c.gender || '';
+  document.getElementById('c-phone').value    = c.phone || '';
+  document.getElementById('c-email').value    = c.email || '';
+  document.getElementById('c-tags').value     = c.tags || '';
   document.getElementById('c-birthday').value = fmtDateVal(c.birthday);
-  document.getElementById('c-note').value     = c.note     || '';
+  document.getElementById('c-note').value     = c.note || '';
   new bootstrap.Modal(document.getElementById('custModal')).show();
 }
 
@@ -709,11 +677,8 @@ async function saveCustomer() {
   };
   if (!payload.name) { toast('请输入客户姓名', true); return; }
   try {
-    if (isEdit) {
-      await api(`/api/customers/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-    } else {
-      await api('/api/customers', { method: 'POST', body: JSON.stringify(payload) });
-    }
+    if (isEdit) await api(`/api/customers/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    else await api('/api/customers', { method: 'POST', body: JSON.stringify(payload) });
     bootstrap.Modal.getInstance(document.getElementById('custModal')).hide();
     toast(isEdit ? '客户信息已更新' : '客户创建成功');
     await loadCustomers();
@@ -729,7 +694,6 @@ async function delCustomer(id) {
   } catch (e) { toast('删除失败：' + e.message, true); }
 }
 
-/* ── Init ─────────────────────────────────────────────────── */
 window.addEventListener('DOMContentLoaded', () => {
   loadUsers();
   loadCustomers();
