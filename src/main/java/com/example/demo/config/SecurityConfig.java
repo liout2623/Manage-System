@@ -1,5 +1,6 @@
 package com.example.demo.config;
 
+import com.example.demo.security.JsonAuthenticationEntryPoint;
 import com.example.demo.security.JwtAuthFilter;
 import com.example.demo.security.JwtProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -20,16 +21,24 @@ import java.util.List;
 @EnableConfigurationProperties(JwtProperties.class)
 public class SecurityConfig {
 
+    private final JsonAuthenticationEntryPoint authenticationEntryPoint;
+
+    public SecurityConfig(JsonAuthenticationEntryPoint authenticationEntryPoint) {
+        this.authenticationEntryPoint = authenticationEntryPoint;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
             .cors(Customizer.withDefaults())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/api/auth/**",
                     "/swagger-ui/**",
+                    "/swagger-ui.html",
                     "/v3/api-docs/**",
                     "/error"
                 ).permitAll()
@@ -47,7 +56,7 @@ public class SecurityConfig {
             CorsConfiguration c = new CorsConfiguration();
             c.setAllowedOrigins(List.of("http://localhost:5173"));
             c.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
-            c.setAllowedHeaders(List.of("Authorization","Content-Type","X-Requested-With"));
+            c.setAllowedHeaders(List.of("*"));
             c.setAllowCredentials(true);
             return c;
         };
