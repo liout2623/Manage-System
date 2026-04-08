@@ -1,8 +1,8 @@
 package com.example.demo.service;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
+import com.example.demo.security.JwtService;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,10 +24,12 @@ public class UserService {
 
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
-    public UserService(UserMapper userMapper, PasswordEncoder passwordEncoder) {
+    public UserService(UserMapper userMapper, PasswordEncoder passwordEncoder, JwtService jwtService) {
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     public UserResponse register(RegisterRequest request) {
@@ -50,7 +52,7 @@ public class UserService {
         if (!passwordEncoder.matches(request.getPassword(), account.getPasswordHash())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "用户名或密码错误");
         }
-        String token = UUID.randomUUID().toString();
+        String token = jwtService.generateToken(account.getId(), account.getUsername(), account.getRole());
         return new LoginResponse(token, toResponse(account));
     }
 
