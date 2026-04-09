@@ -18,7 +18,8 @@ public interface CustomerMapper {
 
     void insert(Customer customer);
 
-    int batchInsert(@Param("list") List<Customer> customers);
+    // 关键修复：@Param 名称必须与 XML 的 collection 一致（customers）
+    int batchInsert(@Param("customers") List<Customer> customers);
 
     int update(Customer customer);
 

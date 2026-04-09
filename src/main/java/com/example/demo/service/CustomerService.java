@@ -28,9 +28,13 @@ public class CustomerService {
         int pageNum = page != null && page > 0 ? page : 1;
         int pageSize = size != null && size > 0 ? size : 20;
         int offset = (pageNum - 1) * pageSize;
+
         List<Customer> customers = customerMapper.findAll(keyword, pageSize, offset);
         long total = customerMapper.countAll(keyword);
-        List<CustomerResponse> responses = customers.stream().map(this::toResponse).collect(Collectors.toList());
+        List<CustomerResponse> responses = customers.stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+
         return new PageResponse<>(total, responses);
     }
 
@@ -54,8 +58,14 @@ public class CustomerService {
         c.setTags(req.getTags());
         c.setNote(req.getNote());
         c.setBirthday(req.getBirthday());
+
         customerMapper.update(c);
-        return toResponse(customerMapper.findById(id));
+
+        Customer updated = customerMapper.findById(id);
+        if (updated == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "客户不存在");
+        }
+        return toResponse(updated);
     }
 
     public CustomerResponse findById(Long id) {
@@ -70,9 +80,11 @@ public class CustomerService {
         if (request == null || CollectionUtils.isEmpty(request.getCustomers())) {
             return 0;
         }
+
         List<Customer> customers = request.getCustomers().stream()
                 .map(req -> toEntity(new Customer(), req))
                 .collect(Collectors.toList());
+
         return customerMapper.batchInsert(customers);
     }
 

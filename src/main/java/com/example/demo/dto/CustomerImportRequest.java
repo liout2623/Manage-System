@@ -6,7 +6,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 
 public class CustomerImportRequest {
-    @NotEmpty
+
+    @NotEmpty(message = "customers 不能为空")
     @Valid
     private List<CustomerRequest> customers;
 
