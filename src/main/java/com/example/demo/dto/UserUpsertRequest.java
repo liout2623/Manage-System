@@ -4,19 +4,24 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public class UserUpsertRequest {
-    @NotBlank
+    @NotBlank(message = "用户名不能为空")
+    @Size(max = 50, message = "用户名长度不能超过50位")
     private String username;
 
-    @NotBlank
+    @NotBlank(message = "显示名称不能为空")
+    @Size(max = 128, message = "显示名称长度不能超过128位")
     private String displayName;
 
     private String password;
 
-    @NotBlank
+    @NotBlank(message = "角色不能为空")
     private String role;
 
-    @Size(max = 30)
+    @Size(max = 30, message = "手机号长度不能超过30位")
     private String phone;
+
+    @Size(max = 255, message = "职业描述长度不能超过255位")
+    private String occupation;
 
     private Boolean active;
 
@@ -58,6 +63,14 @@ public class UserUpsertRequest {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public String getOccupation() {
+        return occupation;
+    }
+
+    public void setOccupation(String occupation) {
+        this.occupation = occupation;
     }
 
     public Boolean getActive() {

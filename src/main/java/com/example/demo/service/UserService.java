@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import com.example.demo.security.JwtService;
 
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -33,14 +34,16 @@ public class UserService {
     }
 
     public UserResponse register(RegisterRequest request) {
-        ensureUsernameAvailable(request.getUsername());
-        UserAccount user = new UserAccount();
-        user.setUsername(request.getUsername());
-        user.setDisplayName(request.getDisplayName());
-        user.setRole("STAFF");
-        user.setActive(true);
-        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        userMapper.insert(user);
+        UserAccount user = buildNewUser(
+                request.getUsername(),
+                request.getDisplayName(),
+                request.getPassword(),
+                "STAFF",
+                request.getPhone(),
+                request.getOccupation(),
+                true
+        );
+            insertNewUser(user, "注册失败，该用户名已存在");
         return toResponse(user);
     }
 
@@ -67,19 +70,16 @@ public class UserService {
     }
 
     public UserResponse create(UserUpsertRequest request) {
-        ensureUsernameAvailable(request.getUsername());
-        UserAccount user = new UserAccount();
-        user.setUsername(request.getUsername());
-        user.setDisplayName(request.getDisplayName());
-        user.setRole(request.getRole());
-        user.setPhone(request.getPhone());
-        user.setActive(request.getActive() != null ? request.getActive() : true);
-        if (StringUtils.hasText(request.getPassword())) {
-            user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        } else {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "密码不能为空");
-        }
-        userMapper.insert(user);
+        UserAccount user = buildNewUser(
+                request.getUsername(),
+                request.getDisplayName(),
+                request.getPassword(),
+                request.getRole(),
+                request.getPhone(),
+                request.getOccupation(),
+                request.getActive() != null ? request.getActive() : true
+        );
+        insertNewUser(user, "用户名已存在");
         return toResponse(user);
     }
 
@@ -94,6 +94,7 @@ public class UserService {
         ua.setDisplayName(req.getDisplayName());
         ua.setRole(req.getRole());
         ua.setPhone(req.getPhone());
+        ua.setOccupation(req.getOccupation());
         ua.setActive(Boolean.TRUE.equals(req.getActive()));
         if (StringUtils.hasText(req.getPassword())) {
             ua.setPasswordHash(passwordEncoder.encode(req.getPassword()));
@@ -110,10 +111,40 @@ public class UserService {
         return toResponse(account);
     }
 
-    private void ensureUsernameAvailable(String username) {
+    private void ensureUsernameAvailable(String username, String duplicateMessage) {
         UserAccount existing = userMapper.findByUsername(username);
         if (existing != null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "用户名已存在");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, duplicateMessage);
+        }
+    }
+
+    private UserAccount buildNewUser(String username,
+                                     String displayName,
+                                     String rawPassword,
+                                     String role,
+                                     String phone,
+                                     String occupation,
+                                     boolean active) {
+        if (!StringUtils.hasText(rawPassword)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "密码不能为空");
+        }
+        UserAccount user = new UserAccount();
+        user.setUsername(username);
+        user.setDisplayName(displayName);
+        user.setRole(role);
+        user.setPhone(phone);
+        user.setOccupation(occupation);
+        user.setActive(active);
+        user.setPasswordHash(passwordEncoder.encode(rawPassword));
+        return user;
+    }
+
+    private void insertNewUser(UserAccount user, String duplicateMessage) {
+        ensureUsernameAvailable(user.getUsername(), duplicateMessage);
+        try {
+            userMapper.insert(user);
+        } catch (DuplicateKeyException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, duplicateMessage);
         }
     }
 
@@ -124,6 +155,7 @@ public class UserService {
         response.setRole(user.getRole());
         response.setDisplayName(user.getDisplayName());
         response.setPhone(user.getPhone());
+        response.setOccupation(user.getOccupation());
         response.setActive(user.getActive());
         return response;
     }

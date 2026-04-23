@@ -9,14 +9,15 @@
         <result column="role" property="role" />
         <result column="display_name" property="displayName" />
         <result column="phone" property="phone" />
+        <result column="occupation" property="occupation" />
         <result column="active" property="active" />
         <result column="created_at" property="createdAt" />
         <result column="updated_at" property="updatedAt" />
     </resultMap>
 
     <insert id="insert" parameterType="com.example.demo.domain.UserAccount" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO users (username, password_hash, role, display_name, phone, active, created_at, updated_at)
-        VALUES (#{username}, #{passwordHash}, #{role}, #{displayName}, #{phone}, #{active}, NOW(), NOW())
+        INSERT INTO users (username, password_hash, role, display_name, phone, occupation, active, created_at, updated_at)
+        VALUES (#{username}, #{passwordHash}, #{role}, #{displayName}, #{phone}, #{occupation}, #{active}, NOW(), NOW())
     </insert>
 
     <delete id="deleteById">
@@ -30,6 +31,7 @@
             role = #{role},
             display_name = #{displayName},
             phone = #{phone},
+            occupation = #{occupation},
             active = #{active},
             updated_at = NOW()
         WHERE id = #{id}
@@ -50,6 +52,7 @@
             display_name,
             role,
             phone,
+            occupation,
             active,
             password_hash,
             created_at,
@@ -59,7 +62,8 @@
             <if test="keyword != null and keyword != ''">
                 AND (username LIKE CONCAT('%', #{keyword}, '%')
                      OR display_name LIKE CONCAT('%', #{keyword}, '%')
-                     OR phone LIKE CONCAT('%', #{keyword}, '%'))
+                     OR phone LIKE CONCAT('%', #{keyword}, '%')
+                     OR occupation LIKE CONCAT('%', #{keyword}, '%'))
             </if>
             <if test="role != null and role != ''">
                 AND role = #{role}
@@ -79,7 +83,8 @@
             <if test="keyword != null and keyword != ''">
                 AND (username LIKE CONCAT('%', #{keyword}, '%')
                      OR display_name LIKE CONCAT('%', #{keyword}, '%')
-                     OR phone LIKE CONCAT('%', #{keyword}, '%'))
+                     OR phone LIKE CONCAT('%', #{keyword}, '%')
+                     OR occupation LIKE CONCAT('%', #{keyword}, '%'))
             </if>
             <if test="role != null and role != ''">
                 AND role = #{role}

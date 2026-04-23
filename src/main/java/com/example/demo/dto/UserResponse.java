@@ -6,6 +6,7 @@ public class UserResponse {
     private String role;
     private String displayName;
     private String phone;
+    private String occupation;
     private Boolean active;
 
     public Long getId() {
@@ -46,6 +47,14 @@ public class UserResponse {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public String getOccupation() {
+        return occupation;
+    }
+
+    public void setOccupation(String occupation) {
+        this.occupation = occupation;
     }
 
     public Boolean getActive() {
