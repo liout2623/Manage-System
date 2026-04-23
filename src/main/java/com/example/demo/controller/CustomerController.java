@@ -41,8 +41,9 @@ public class CustomerController {
     @GetMapping
     public ApiResponse<PageResponse<CustomerResponse>> list(@RequestParam(required = false) String keyword,
                                                             @RequestParam(required = false) Integer page,
-                                                            @RequestParam(required = false) Integer size) {
-        return ApiResponse.ok(customerService.list(keyword, page, size));
+                                                            @RequestParam(required = false) Integer size,
+                                                            @RequestParam(required = false) String sort) {
+        return ApiResponse.ok(customerService.list(keyword, page, size, sort));
     }
 
     @GetMapping("/{id}")

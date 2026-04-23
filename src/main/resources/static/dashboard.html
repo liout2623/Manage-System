@@ -268,6 +268,9 @@
           <button class="btn-refresh" onclick="loadUsers()">
             <i class="bi bi-arrow-clockwise"></i>刷新
           </button>
+          <button class="btn-refresh" id="btn-user-export" style="display:none" onclick="exportUsers()">
+            <i class="bi bi-download"></i>导出用户档案
+          </button>
           <button class="btn-add" onclick="openUserModal()">
             <i class="bi bi-plus-lg"></i>新增用户
           </button>
@@ -441,7 +444,15 @@
 const TOKEN = localStorage.getItem('token') || '';
 if (!TOKEN) { window.location.replace('/'); }
 const CUR = JSON.parse(localStorage.getItem('currentUser') || '{}');
+const IS_ADMIN = String(CUR.role || '').toUpperCase() === 'ADMIN';
 document.getElementById('nav-name').textContent = CUR.displayName || CUR.username || '管理员';
+
+function applyRoleVisibility() {
+  const exportBtn = document.getElementById('btn-user-export');
+  if (exportBtn) {
+    exportBtn.style.display = IS_ADMIN ? 'flex' : 'none';
+  }
+}
 
 function logout() {
   localStorage.removeItem('token');
@@ -603,6 +614,65 @@ async function delUser(id) {
   } catch (e) { toast('删除失败：' + e.message, true); }
 }
 
+async function exportUsers() {
+  if (!IS_ADMIN) {
+    toast('仅管理员可导出用户档案', true);
+    return;
+  }
+
+  try {
+    const resp = await fetch('/api/users/export', {
+      method: 'GET',
+      headers: { Authorization: 'Bearer ' + TOKEN }
+    });
+
+    if (resp.status === 401) {
+      logout();
+      return;
+    }
+    if (resp.status === 403) {
+      toast('仅管理员可导出用户档案', true);
+      return;
+    }
+    if (!resp.ok) {
+      const txt = await resp.text();
+      let msg = txt;
+      try {
+        const j = JSON.parse(txt);
+        msg = j.message || j.error || txt;
+      } catch {
+        // Keep raw text response if parsing fails.
+      }
+      throw new Error(msg || String(resp.status));
+    }
+
+    const blob = await resp.blob();
+    const disposition = resp.headers.get('content-disposition') || '';
+    let fileName = '用户档案.xlsx';
+
+    const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    const asciiMatch = disposition.match(/filename="?([^";]+)"?/i);
+    if (utf8Match && utf8Match[1]) {
+      fileName = decodeURIComponent(utf8Match[1]);
+    } else if (asciiMatch && asciiMatch[1]) {
+      fileName = asciiMatch[1];
+    }
+
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+
+    toast('用户档案导出成功');
+  } catch (e) {
+    toast('导出失败：' + e.message, true);
+  }
+}
+
 /* CUSTOMERS */
 let _custs = {};
 
@@ -695,6 +765,7 @@ async function delCustomer(id) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  applyRoleVisibility();
   loadUsers();
   loadCustomers();
 });

@@ -10,7 +10,9 @@ public interface CustomerMapper {
 
     List<Customer> findAll(@Param("keyword") String keyword,
                            @Param("limit") int limit,
-                           @Param("offset") int offset);
+                           @Param("offset") int offset,
+                           @Param("sortField") String sortField,
+                           @Param("sortDirection") String sortDirection);
 
     long countAll(@Param("keyword") String keyword);
 

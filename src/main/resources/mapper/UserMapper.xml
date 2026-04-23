@@ -37,6 +37,13 @@
         WHERE id = #{id}
     </update>
 
+    <update id="updatePassword">
+        UPDATE users
+        SET password_hash = #{passwordHash},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
     <select id="findById" parameterType="long" resultMap="UserResult">
         SELECT * FROM users WHERE id = #{id}
     </select>
@@ -72,7 +79,7 @@
                 AND active = #{active}
             </if>
         </where>
-        ORDER BY id DESC
+        ORDER BY ${sortField} ${sortDirection}
         LIMIT #{limit} OFFSET #{offset}
     </select>
 

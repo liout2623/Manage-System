@@ -29,12 +29,25 @@ public class CustomerService {
         this.customerMapper = customerMapper;
     }
 
-    public PageResponse<CustomerResponse> list(String keyword, Integer page, Integer size) {
+    public PageResponse<CustomerResponse> list(String keyword, Integer page, Integer size, String sort) {
         int pageNum = page != null && page > 0 ? page : 1;
         int pageSize = size != null && size > 0 ? size : 20;
         int offset = (pageNum - 1) * pageSize;
 
-        List<Customer> customers = customerMapper.findAll(keyword, pageSize, offset);
+        // 解析排序参数，格式: "field,asc" 或 "field,desc"
+        String sortField = "id";
+        String sortDirection = "desc";
+        if (sort != null && !sort.isEmpty()) {
+            String[] parts = sort.split(",");
+            if (parts.length >= 1 && !parts[0].trim().isEmpty()) {
+                sortField = parts[0].trim();
+            }
+            if (parts.length >= 2 && "asc".equalsIgnoreCase(parts[1].trim())) {
+                sortDirection = "asc";
+            }
+        }
+
+        List<Customer> customers = customerMapper.findAll(keyword, pageSize, offset, sortField, sortDirection);
         long total = customerMapper.countAll(keyword);
         List<CustomerResponse> responses = customers.stream()
                 .map(this::toResponse)
@@ -94,7 +107,7 @@ public class CustomerService {
     }
 
     public List<CustomerExportRow> listForExport() {
-        List<Customer> customers = customerMapper.findAll(null, Integer.MAX_VALUE, 0);
+        List<Customer> customers = customerMapper.findAll(null, Integer.MAX_VALUE, 0, "id", "asc");
         return customers.stream()
                 .map(this::toExportRow)
                 .collect(Collectors.toList());

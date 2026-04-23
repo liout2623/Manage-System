@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 import com.example.demo.security.JwtService;
@@ -13,15 +14,19 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.example.demo.domain.UserAccount;
 import com.example.demo.dto.AuthRequest;
+import com.example.demo.dto.ChangePasswordRequest;
 import com.example.demo.dto.LoginResponse;
 import com.example.demo.dto.PageResponse;
 import com.example.demo.dto.RegisterRequest;
+import com.example.demo.dto.UserExportRow;
 import com.example.demo.dto.UserResponse;
 import com.example.demo.dto.UserUpsertRequest;
 import com.example.demo.mapper.UserMapper;
 
 @Service
 public class UserService {
+
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
@@ -59,11 +64,25 @@ public class UserService {
         return new LoginResponse(token, toResponse(account));
     }
 
-    public PageResponse<UserResponse> list(String keyword, String role, Boolean active, Integer page, Integer size) {
+    public PageResponse<UserResponse> list(String keyword, String role, Boolean active, Integer page, Integer size, String sort) {
         int pageNum = page != null && page > 0 ? page : 1;
         int pageSize = size != null && size > 0 ? size : 20;
         int offset = (pageNum - 1) * pageSize;
-        List<UserAccount> users = userMapper.findAll(keyword, role, active, pageSize, offset);
+
+        // 解析排序参数，格式: "field,asc" 或 "field,desc"
+        String sortField = "id";
+        String sortDirection = "desc";
+        if (sort != null && !sort.isEmpty()) {
+            String[] parts = sort.split(",");
+            if (parts.length >= 1 && !parts[0].trim().isEmpty()) {
+                sortField = parts[0].trim();
+            }
+            if (parts.length >= 2 && "asc".equalsIgnoreCase(parts[1].trim())) {
+                sortDirection = "asc";
+            }
+        }
+
+        List<UserAccount> users = userMapper.findAll(keyword, role, active, pageSize, offset, sortField, sortDirection);
         long total = userMapper.countAll(keyword, role, active);
         List<UserResponse> responses = users.stream().map(this::toResponse).collect(Collectors.toList());
         return new PageResponse<>(total, responses);
@@ -109,6 +128,34 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "用户不存在");
         }
         return toResponse(account);
+    }
+
+    public void changePassword(String username, ChangePasswordRequest request) {
+        UserAccount account = userMapper.findByUsername(username);
+        if (account == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "用户不存在");
+        }
+
+        // 验证当前密码
+        if (!passwordEncoder.matches(request.getCurrentPassword(), account.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "当前密码错误");
+        }
+
+        // 新密码不能与旧密码相同
+        if (passwordEncoder.matches(request.getNewPassword(), account.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "新密码不能与当前密码相同");
+        }
+
+        // 更新密码
+        String newPasswordHash = passwordEncoder.encode(request.getNewPassword());
+        userMapper.updatePassword(account.getId(), newPasswordHash);
+    }
+
+    public List<UserExportRow> listForExport() {
+        List<UserAccount> users = userMapper.findAll(null, null, null, Integer.MAX_VALUE, 0, "id", "asc");
+        return users.stream()
+                .map(this::toExportRow)
+                .collect(Collectors.toList());
     }
 
     private void ensureUsernameAvailable(String username, String duplicateMessage) {
@@ -158,5 +205,19 @@ public class UserService {
         response.setOccupation(user.getOccupation());
         response.setActive(user.getActive());
         return response;
+    }
+
+    private UserExportRow toExportRow(UserAccount user) {
+        UserExportRow row = new UserExportRow();
+        row.setId(user.getId());
+        row.setUsername(user.getUsername());
+        row.setDisplayName(user.getDisplayName());
+        row.setRole(user.getRole());
+        row.setPhone(user.getPhone());
+        row.setOccupation(user.getOccupation());
+        row.setActive(Boolean.TRUE.equals(user.getActive()) ? "启用" : "停用");
+        row.setCreatedAt(user.getCreatedAt() == null ? null : user.getCreatedAt().format(DATETIME_FORMATTER));
+        row.setUpdatedAt(user.getUpdatedAt() == null ? null : user.getUpdatedAt().format(DATETIME_FORMATTER));
+        return row;
     }
 }

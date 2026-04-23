@@ -9,7 +9,9 @@ public interface UserMapper {
                               @Param("role") String role,
                               @Param("active") Boolean active,
                               @Param("limit") int limit,
-                              @Param("offset") int offset);
+                              @Param("offset") int offset,
+                              @Param("sortField") String sortField,
+                              @Param("sortDirection") String sortDirection);
 
     long countAll(@Param("keyword") String keyword,
                   @Param("role") String role,
@@ -20,4 +22,5 @@ public interface UserMapper {
     void insert(UserAccount user);
     int update(UserAccount user);
     int deleteById(Long id);
+    int updatePassword(@Param("id") Long id, @Param("passwordHash") String passwordHash);
 }

@@ -59,7 +59,7 @@
                      OR tags LIKE CONCAT('%', #{keyword}, '%'))
             </if>
         </where>
-        ORDER BY id DESC
+        ORDER BY ${sortField} ${sortDirection}
         LIMIT #{limit} OFFSET #{offset}
     </select>
 
