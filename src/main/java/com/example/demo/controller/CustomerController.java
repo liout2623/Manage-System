@@ -1,5 +1,9 @@
 package com.example.demo.controller;
 
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,13 +15,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.alibaba.excel.EasyExcel;
 import com.example.demo.dto.ApiResponse;
+import com.example.demo.dto.CustomerExportRow;
 import com.example.demo.dto.CustomerImportRequest;
 import com.example.demo.dto.CustomerRequest;
 import com.example.demo.dto.CustomerResponse;
 import com.example.demo.dto.PageResponse;
 import com.example.demo.service.CustomerService;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
 @RestController
@@ -64,5 +71,18 @@ public class CustomerController {
     public ApiResponse<Integer> importBatch(@Valid @RequestBody CustomerImportRequest request) {
         int inserted = customerService.importBatch(request);
         return ApiResponse.ok(inserted, "导入完成");
+    }
+
+    @GetMapping("/export")
+    public void export(HttpServletResponse response) throws IOException {
+        String fileName = URLEncoder.encode("客户档案", StandardCharsets.UTF_8).replace("+", "%20");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment;filename*=UTF-8''" + fileName + ".xlsx");
+
+        EasyExcel.write(response.getOutputStream(), CustomerExportRow.class)
+                .autoCloseStream(false)
+                .sheet("客户档案")
+                .doWrite(customerService.listForExport());
     }
 }

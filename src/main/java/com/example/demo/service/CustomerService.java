@@ -1,5 +1,6 @@
 package com.example.demo.service;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -9,6 +10,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.example.demo.domain.Customer;
+import com.example.demo.dto.CustomerExportRow;
 import com.example.demo.dto.CustomerImportRequest;
 import com.example.demo.dto.CustomerRequest;
 import com.example.demo.dto.CustomerResponse;
@@ -17,6 +19,9 @@ import com.example.demo.mapper.CustomerMapper;
 
 @Service
 public class CustomerService {
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final CustomerMapper customerMapper;
 
@@ -88,6 +93,13 @@ public class CustomerService {
         return customerMapper.batchInsert(customers);
     }
 
+    public List<CustomerExportRow> listForExport() {
+        List<Customer> customers = customerMapper.findAll(null, Integer.MAX_VALUE, 0);
+        return customers.stream()
+                .map(this::toExportRow)
+                .collect(Collectors.toList());
+    }
+
     private Customer toEntity(Customer target, CustomerRequest request) {
         target.setName(request.getName());
         target.setPhone(request.getPhone());
@@ -112,5 +124,20 @@ public class CustomerService {
         response.setCreatedAt(customer.getCreatedAt());
         response.setUpdatedAt(customer.getUpdatedAt());
         return response;
+    }
+
+    private CustomerExportRow toExportRow(Customer customer) {
+        CustomerExportRow row = new CustomerExportRow();
+        row.setId(customer.getId());
+        row.setName(customer.getName());
+        row.setPhone(customer.getPhone());
+        row.setEmail(customer.getEmail());
+        row.setGender(customer.getGender());
+        row.setTags(customer.getTags());
+        row.setNote(customer.getNote());
+        row.setBirthday(customer.getBirthday() == null ? null : customer.getBirthday().format(DATE_FORMATTER));
+        row.setCreatedAt(customer.getCreatedAt() == null ? null : customer.getCreatedAt().format(DATETIME_FORMATTER));
+        row.setUpdatedAt(customer.getUpdatedAt() == null ? null : customer.getUpdatedAt().format(DATETIME_FORMATTER));
+        return row;
     }
 }
