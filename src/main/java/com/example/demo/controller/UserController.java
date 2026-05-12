@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.alibaba.excel.EasyExcel;
 import com.example.demo.dto.ApiResponse;
 import com.example.demo.dto.ChangePasswordRequest;
+import com.example.demo.dto.DeleteAccountRequest;
 import com.example.demo.dto.PageResponse;
 import com.example.demo.dto.UserExportRow;
 import com.example.demo.dto.UserResponse;
@@ -28,6 +29,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @RestController
 @RequestMapping("/api/users")
@@ -72,6 +74,16 @@ public class UserController {
         return ApiResponse.ok(null);
     }
 
+    @DeleteMapping("/me")
+    public ApiResponse<Void> deleteCurrentUser(@Valid @RequestBody DeleteAccountRequest request,
+                                               Authentication authentication) {
+        String username = SecurityContextHolder.getContext().getAuthentication() != null
+                ? SecurityContextHolder.getContext().getAuthentication().getName()
+                : authentication.getName();
+        userService.deleteCurrentUser(username, request.getCurrentPassword());
+        return ApiResponse.ok(null, "账号已注销");
+    }
+
     @PutMapping("/me/password")
     public ApiResponse<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request,
                                             Authentication authentication) {
@@ -81,7 +93,10 @@ public class UserController {
     }
 
     @GetMapping("/export")
-    public void export(HttpServletResponse response) throws IOException {
+    public void export(HttpServletResponse response,
+                       @RequestParam(required = false) String keyword,
+                       @RequestParam(required = false) String role,
+                       @RequestParam(required = false) Boolean active) throws IOException {
         String fileName = URLEncoder.encode("用户档案", StandardCharsets.UTF_8).replace("+", "%20");
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -90,6 +105,6 @@ public class UserController {
         EasyExcel.write(response.getOutputStream(), UserExportRow.class)
                 .autoCloseStream(false)
                 .sheet("用户档案")
-                .doWrite(userService.listForExport());
+                .doWrite(userService.listForExport(keyword, role, active));
     }
 }

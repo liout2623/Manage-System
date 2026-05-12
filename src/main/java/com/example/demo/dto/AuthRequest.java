@@ -9,6 +9,7 @@ public class AuthRequest {
     private String username;
 
     @NotBlank(message = "密码不能为空")
+    @Size(min = 6, max = 128, message = "密码长度须为6-128位")
     private String password;
 
     public String getUsername() {

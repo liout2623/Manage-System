@@ -216,6 +216,7 @@
 
     /* ── Footer info ────────────────────────────── */
     .tbl-footer { color: #94a3b8; font-size: .82rem; margin-top: 12px; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
@@ -260,7 +261,7 @@
             <i class="bi bi-search"></i>
             <input type="text" id="user-kw" placeholder="搜索用户名、姓名、电话…" oninput="debounce('u', () => loadUsers())">
           </div>
-          <select class="filter-select" id="user-role-filter" onchange="loadUsers()">
+          <select class="filter-select" id="user-role-filter" aria-label="角色筛选" onchange="loadUsers()">
             <option value="">全部角色</option>
             <option value="ADMIN">ADMIN</option>
             <option value="STAFF">STAFF</option>
@@ -268,7 +269,7 @@
           <button class="btn-refresh" onclick="loadUsers()">
             <i class="bi bi-arrow-clockwise"></i>刷新
           </button>
-          <button class="btn-refresh" id="btn-user-export" style="display:none" onclick="exportUsers()">
+          <button class="btn-refresh" id="btn-user-export" onclick="exportUsers()">
             <i class="bi bi-download"></i>导出用户档案
           </button>
           <button class="btn-add" onclick="openUserModal()">
@@ -294,7 +295,7 @@
     </div>
   </div>
 
-  <div id="panel-customers" style="display:none">
+  <div id="panel-customers" class="hidden">
     <div class="s-card">
       <div class="s-card-head">
         <h5><i class="bi bi-person-heart-fill"></i>客户管理</h5>
@@ -338,7 +339,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="userModalTitle">新增用户</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" aria-label="关闭" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="u-id">
@@ -360,7 +361,7 @@
             <input class="form-control" id="u-phone" placeholder="请输入电话号码">
           </div>
           <div class="col-6">
-            <label class="form-label">角色 <span class="text-danger">*</span></label>
+            <label class="form-label" for="u-role">角色 <span class="text-danger">*</span></label>
             <select class="form-select" id="u-role">
               <option value="STAFF">STAFF</option>
               <option value="ADMIN">ADMIN</option>
@@ -387,7 +388,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="custModalTitle">新增客户</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" aria-label="关闭" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="c-id">
@@ -397,7 +398,7 @@
             <input class="form-control" id="c-name" placeholder="请输入姓名">
           </div>
           <div class="col-6">
-            <label class="form-label">性别</label>
+            <label class="form-label" for="c-gender">性别</label>
             <select class="form-select" id="c-gender">
               <option value="">请选择</option>
               <option value="男">男</option>
@@ -414,7 +415,7 @@
             <input class="form-control" id="c-email" type="email" placeholder="请输入邮箱">
           </div>
           <div class="col-6">
-            <label class="form-label">生日</label>
+            <label class="form-label" for="c-birthday">生日</label>
             <input class="form-control" id="c-birthday" type="date">
           </div>
           <div class="col-6">
@@ -450,7 +451,7 @@ document.getElementById('nav-name').textContent = CUR.displayName || CUR.usernam
 function applyRoleVisibility() {
   const exportBtn = document.getElementById('btn-user-export');
   if (exportBtn) {
-    exportBtn.style.display = IS_ADMIN ? 'flex' : 'none';
+    if (IS_ADMIN) { exportBtn.classList.remove('hidden'); } else { exportBtn.classList.add('hidden'); }
   }
 }
 
@@ -462,7 +463,8 @@ function logout() {
 
 function switchTab(tab) {
   ['users','customers'].forEach(t => {
-    document.getElementById('panel-' + t).style.display = t === tab ? '' : 'none';
+    const panel = document.getElementById('panel-' + t);
+    if (t === tab) { panel.classList.remove('hidden'); } else { panel.classList.add('hidden'); }
     document.getElementById('tab-' + t).classList.toggle('active', t === tab);
   });
 }

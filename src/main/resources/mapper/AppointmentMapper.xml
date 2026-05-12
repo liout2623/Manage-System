@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.AppointmentMapper">
+
+    <resultMap id="AppointmentResult" type="com.example.demo.domain.Appointment">
+        <id column="id" property="id" />
+        <result column="customer_id" property="customerId" />
+        <result column="service_id" property="serviceId" />
+        <result column="therapist_id" property="therapistId" />
+        <result column="appointment_time" property="appointmentTime" />
+        <result column="end_time" property="endTime" />
+        <result column="status" property="status" />
+        <result column="note" property="note" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+        <result column="customer_name" property="customerName" />
+        <result column="service_name" property="serviceName" />
+        <result column="therapist_name" property="therapistName" />
+    </resultMap>
+
+    <!-- 公共连表 SELECT 片段 -->
+    <sql id="selectWithNames">
+        SELECT a.id,
+               a.customer_id,
+               a.service_id,
+               a.therapist_id,
+               a.appointment_time,
+               a.end_time,
+               a.status,
+               a.note,
+               a.created_at,
+               a.updated_at,
+               c.name AS customer_name,
+               s.name AS service_name,
+               u.display_name AS therapist_name
+        FROM appointments a
+        LEFT JOIN customers c ON c.id = a.customer_id
+        LEFT JOIN services s ON s.id = a.service_id
+        LEFT JOIN users u ON u.id = a.therapist_id
+    </sql>
+
+    <insert id="insert" parameterType="com.example.demo.domain.Appointment" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO appointments (customer_id, service_id, therapist_id, appointment_time, end_time, status, note, created_at, updated_at)
+        VALUES (#{customerId}, #{serviceId}, #{therapistId}, #{appointmentTime}, #{endTime}, #{status}, #{note}, NOW(), NOW())
+    </insert>
+
+    <update id="update" parameterType="com.example.demo.domain.Appointment">
+        UPDATE appointments
+        SET customer_id = #{customerId},
+            service_id = #{serviceId},
+            therapist_id = #{therapistId},
+            appointment_time = #{appointmentTime},
+            end_time = #{endTime},
+            note = #{note},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE appointments
+        SET status = #{status},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM appointments WHERE id = #{id}
+    </delete>
+
+    <select id="findById" resultMap="AppointmentResult">
+        <include refid="selectWithNames" />
+        WHERE a.id = #{id}
+    </select>
+
+    <select id="findAll" resultMap="AppointmentResult">
+        <include refid="selectWithNames" />
+        <where>
+            <if test="therapistId != null">
+                AND a.therapist_id = #{therapistId}
+            </if>
+            <if test="customerId != null">
+                AND a.customer_id = #{customerId}
+            </if>
+            <choose>
+                <when test="startDate != null or endDate != null">
+                    <if test="startDate != null">
+                        AND a.appointment_time &gt;= #{startDate}
+                    </if>
+                    <if test="endDate != null">
+                        AND a.appointment_time &lt; DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+                    </if>
+                </when>
+                <when test="date != null">
+                    AND a.appointment_time &gt;= #{date}
+                    AND a.appointment_time &lt; DATE_ADD(#{date}, INTERVAL 1 DAY)
+                </when>
+            </choose>
+            <if test="status != null and status != ''">
+                AND a.status = #{status}
+            </if>
+        </where>
+        ORDER BY
+        <choose>
+            <when test="sortField == 'created_at'">a.created_at</when>
+            <when test="sortField == 'id'">a.id</when>
+            <otherwise>a.appointment_time</otherwise>
+        </choose>
+        <choose>
+            <when test="sortDirection == 'DESC'">DESC</when>
+            <otherwise>ASC</otherwise>
+        </choose>
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(1)
+        FROM appointments a
+        <where>
+            <if test="therapistId != null">
+                AND a.therapist_id = #{therapistId}
+            </if>
+            <if test="customerId != null">
+                AND a.customer_id = #{customerId}
+            </if>
+            <choose>
+                <when test="startDate != null or endDate != null">
+                    <if test="startDate != null">
+                        AND a.appointment_time &gt;= #{startDate}
+                    </if>
+                    <if test="endDate != null">
+                        AND a.appointment_time &lt; DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+                    </if>
+                </when>
+                <when test="date != null">
+                    AND a.appointment_time &gt;= #{date}
+                    AND a.appointment_time &lt; DATE_ADD(#{date}, INTERVAL 1 DAY)
+                </when>
+            </choose>
+            <if test="status != null and status != ''">
+                AND a.status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="countConflict" resultType="long">
+        SELECT COUNT(1)
+        FROM appointments
+        WHERE therapist_id = #{therapistId}
+          AND status IN ('BOOKED', 'COMPLETED')
+          AND appointment_time &lt; #{endTime}
+          AND end_time &gt; #{appointmentTime}
+          <if test="excludeId != null">
+              AND id != #{excludeId}
+          </if>
+    </select>
+
+    <select id="countActiveByTherapistId" resultType="long">
+        SELECT COUNT(1) FROM appointments
+        WHERE therapist_id = #{therapistId} AND status = 'BOOKED'
+    </select>
+
+    <select id="countActiveByCustomerId" resultType="long">
+        SELECT COUNT(1) FROM appointments
+        WHERE customer_id = #{customerId} AND status = 'BOOKED'
+    </select>
+
+    <select id="countActiveByServiceId" resultType="long">
+        SELECT COUNT(1) FROM appointments
+        WHERE service_id = #{serviceId} AND status = 'BOOKED'
+    </select>
+
+</mapper>

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.HealthRecordMapper">
+
+    <resultMap id="HealthRecordResult" type="com.example.demo.domain.HealthRecord">
+        <id column="id" property="id" />
+        <result column="customer_id" property="customerId" />
+        <result column="assessment" property="assessment" />
+        <result column="recommendation" property="recommendation" />
+        <result column="record_date" property="recordDate" />
+        <result column="created_by" property="createdBy" />
+        <result column="created_by_name" property="createdByName" />
+        <result column="created_at" property="createdAt" />
+    </resultMap>
+
+    <insert id="insert" parameterType="com.example.demo.domain.HealthRecord" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO health_records (customer_id, assessment, recommendation, record_date, created_by, created_at)
+        VALUES (#{customerId}, #{assessment}, #{recommendation}, #{recordDate}, #{createdBy}, NOW())
+    </insert>
+
+    <update id="update" parameterType="com.example.demo.domain.HealthRecord">
+        UPDATE health_records
+        SET assessment = #{assessment},
+            recommendation = #{recommendation},
+            record_date = #{recordDate}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM health_records
+        WHERE id = #{recordId}
+    </delete>
+
+    <select id="findByCustomerId" resultMap="HealthRecordResult">
+        SELECT hr.id,
+               hr.customer_id,
+               hr.assessment,
+               hr.recommendation,
+               hr.record_date,
+               hr.created_by,
+               hr.created_at,
+               u.display_name AS created_by_name
+        FROM health_records hr
+        LEFT JOIN users u ON u.id = hr.created_by
+        WHERE hr.customer_id = #{customerId}
+        ORDER BY hr.record_date DESC, hr.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByCustomerId" resultType="long">
+        SELECT COUNT(1)
+        FROM health_records
+        WHERE customer_id = #{customerId}
+    </select>
+
+    <select id="findByIdAndCustomerId" resultMap="HealthRecordResult">
+        SELECT hr.id,
+               hr.customer_id,
+               hr.assessment,
+               hr.recommendation,
+               hr.record_date,
+               hr.created_by,
+               hr.created_at,
+               u.display_name AS created_by_name
+        FROM health_records hr
+        LEFT JOIN users u ON u.id = hr.created_by
+        WHERE hr.id = #{recordId}
+          AND hr.customer_id = #{customerId}
+    </select>
+</mapper>

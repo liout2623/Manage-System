@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import com.example.demo.security.JwtService;
 
@@ -21,19 +22,27 @@ import com.example.demo.dto.RegisterRequest;
 import com.example.demo.dto.UserExportRow;
 import com.example.demo.dto.UserResponse;
 import com.example.demo.dto.UserUpsertRequest;
+import com.example.demo.mapper.AppointmentMapper;
 import com.example.demo.mapper.UserMapper;
 
 @Service
 public class UserService {
 
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final int MAX_EXPORT_LIMIT = 10_000;
+    private static final Set<String> USER_SORT_FIELD_WHITELIST = Set.of(
+            "id", "username", "display_name", "role", "phone", "occupation", "active", "created_at", "updated_at"
+    );
+    private static final Set<String> VALID_ROLES = Set.of("ADMIN", "STAFF");
 
     private final UserMapper userMapper;
+    private final AppointmentMapper appointmentMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
-    public UserService(UserMapper userMapper, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public UserService(UserMapper userMapper, AppointmentMapper appointmentMapper, PasswordEncoder passwordEncoder, JwtService jwtService) {
         this.userMapper = userMapper;
+        this.appointmentMapper = appointmentMapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
     }
@@ -75,11 +84,18 @@ public class UserService {
         if (sort != null && !sort.isEmpty()) {
             String[] parts = sort.split(",");
             if (parts.length >= 1 && !parts[0].trim().isEmpty()) {
-                sortField = parts[0].trim();
+                sortField = parts[0].trim().toLowerCase();
             }
-            if (parts.length >= 2 && "asc".equalsIgnoreCase(parts[1].trim())) {
-                sortDirection = "asc";
+            if (parts.length >= 2) {
+                sortDirection = parts[1].trim().toLowerCase();
             }
+        }
+
+        if (!USER_SORT_FIELD_WHITELIST.contains(sortField)) {
+            sortField = "id";
+        }
+        if (!"asc".equals(sortDirection) && !"desc".equals(sortDirection)) {
+            sortDirection = "desc";
         }
 
         List<UserAccount> users = userMapper.findAll(keyword, role, active, pageSize, offset, sortField, sortDirection);
@@ -103,10 +119,46 @@ public class UserService {
     }
 
     public void delete(Long id) {
+        UserAccount account = userMapper.findById(id);
+        if (account == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "用户不存在");
+        }
+        long activeAppointments = appointmentMapper.countActiveByTherapistId(id);
+        if (activeAppointments > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "该用户有 " + activeAppointments + " 条未完成预约，无法删除");
+        }
         userMapper.deleteById(id);
     }
 
+    public void deleteCurrentUser(String username, String currentPassword) {
+        UserAccount account = userMapper.findByUsername(username);
+        if (account == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "用户不存在");
+        }
+        if (!passwordEncoder.matches(currentPassword, account.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "当前密码错误");
+        }
+        long activeAppointments = appointmentMapper.countActiveByTherapistId(account.getId());
+        if (activeAppointments > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "该用户有 " + activeAppointments + " 条未完成预约，无法删除");
+        }
+        userMapper.deleteById(account.getId());
+    }
+
     public UserResponse update(Long id, UserUpsertRequest req) {
+        if (!VALID_ROLES.contains(req.getRole())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "角色只允许 ADMIN 或 STAFF");
+        }
+        UserAccount existing = userMapper.findById(id);
+        if (existing == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "用户不存在");
+        }
+        // 如果用户名发生变更，需要校验新用户名的唯一性
+        if (!existing.getUsername().equals(req.getUsername())) {
+            ensureUsernameAvailable(req.getUsername(), "用户名已存在");
+        }
         UserAccount ua = new UserAccount();
         ua.setId(id);
         ua.setUsername(req.getUsername());
@@ -151,8 +203,8 @@ public class UserService {
         userMapper.updatePassword(account.getId(), newPasswordHash);
     }
 
-    public List<UserExportRow> listForExport() {
-        List<UserAccount> users = userMapper.findAll(null, null, null, Integer.MAX_VALUE, 0, "id", "asc");
+    public List<UserExportRow> listForExport(String keyword, String role, Boolean active) {
+        List<UserAccount> users = userMapper.findAll(keyword, role, active, MAX_EXPORT_LIMIT, 0, "id", "asc");
         return users.stream()
                 .map(this::toExportRow)
                 .collect(Collectors.toList());
@@ -174,6 +226,9 @@ public class UserService {
                                      boolean active) {
         if (!StringUtils.hasText(rawPassword)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "密码不能为空");
+        }
+        if (!VALID_ROLES.contains(role)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "角色只允许 ADMIN 或 STAFF");
         }
         UserAccount user = new UserAccount();
         user.setUsername(username);

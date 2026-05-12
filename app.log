@@ -1,0 +1,72 @@
+Picked up JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF-8
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------------< com.example:demo >--------------------------
+[INFO] Building demo 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:4.0.0:run (default-cli) > test-compile @ demo >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ demo ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 8 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ demo ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ demo ---
+[INFO] skip non existing resourceDirectory c:\Users\leeout\Documents\workspace-spring-tools-for-eclipse-4.32.2.RELEASE\demo\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ demo ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< spring-boot:4.0.0:run (default-cli) < test-compile @ demo <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:4.0.0:run (default-cli) @ demo ---
+[INFO] Attaching agents: []
+Picked up JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF-8
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.0.0)
+
+2026-04-30T18:32:11.661+08:00  INFO 1164 --- [demo] [           main] com.example.demo.DemoApplication         : Starting DemoApplication using Java 21.0.10 with PID 1164 (C:\Users\leeout\Documents\workspace-spring-tools-for-eclipse-4.32.2.RELEASE\demo\target\classes started by leeout in c:\Users\leeout\Documents\workspace-spring-tools-for-eclipse-4.32.2.RELEASE\demo)
+2026-04-30T18:32:11.665+08:00  INFO 1164 --- [demo] [           main] com.example.demo.DemoApplication         : No active profile set, falling back to 1 default profile: "default"
+2026-04-30T18:32:13.575+08:00  INFO 1164 --- [demo] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8080 (http)
+2026-04-30T18:32:13.597+08:00  INFO 1164 --- [demo] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-04-30T18:32:13.598+08:00  INFO 1164 --- [demo] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.14]
+2026-04-30T18:32:13.692+08:00  INFO 1164 --- [demo] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 1975 ms
+2026-04-30T18:32:14.292+08:00  INFO 1164 --- [demo] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-04-30T18:32:14.479+08:00  INFO 1164 --- [demo] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@47eaf55c
+2026-04-30T18:32:14.481+08:00  INFO 1164 --- [demo] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-04-30T18:32:14.830+08:00  WARN 1164 --- [demo] [           main] .s.a.UserDetailsServiceAutoConfiguration : 
+
+Using generated security password: 814a417b-c74e-47d0-9ea9-c98e40814603
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-04-30T18:32:14.838+08:00  INFO 1164 --- [demo] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+2026-04-30T18:32:15.034+08:00  INFO 1164 --- [demo] [           main] o.s.b.w.a.WelcomePageHandlerMapping      : Adding welcome page: class path resource [static/index.html]
+2026-04-30T18:32:15.587+08:00  INFO 1164 --- [demo] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
+2026-04-30T18:32:15.677+08:00  INFO 1164 --- [demo] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8080 (http) with context path '/'
+2026-04-30T18:32:15.684+08:00  INFO 1164 --- [demo] [           main] com.example.demo.DemoApplication         : Started DemoApplication in 4.689 seconds (process running for 5.235)
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:08 min
+[INFO] Finished at: 2026-04-30T18:33:16+08:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:4.0.0:run (default-cli) on project demo: Process terminated with exit code: 1 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

@@ -75,7 +75,8 @@ public class CustomerController {
     }
 
     @GetMapping("/export")
-    public void export(HttpServletResponse response) throws IOException {
+    public void export(HttpServletResponse response,
+                       @RequestParam(required = false) String keyword) throws IOException {
         String fileName = URLEncoder.encode("客户档案", StandardCharsets.UTF_8).replace("+", "%20");
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -84,6 +85,6 @@ public class CustomerController {
         EasyExcel.write(response.getOutputStream(), CustomerExportRow.class)
                 .autoCloseStream(false)
                 .sheet("客户档案")
-                .doWrite(customerService.listForExport());
+                .doWrite(customerService.listForExport(keyword));
     }
 }

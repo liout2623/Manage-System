@@ -1,5 +1,6 @@
 package com.example.demo.security;
 
+import com.example.demo.dto.ApiResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,8 +11,6 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 @Component
 public class JsonAuthenticationEntryPoint implements AuthenticationEntryPoint {
@@ -31,11 +30,6 @@ public class JsonAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
 
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("success", false);
-        body.put("message", "未登录或Token无效");
-        body.put("data", null);
-
-        response.getWriter().write(objectMapper.writeValueAsString(body));
+        response.getWriter().write(objectMapper.writeValueAsString(ApiResponse.fail("未登录或Token无效")));
     }
 }

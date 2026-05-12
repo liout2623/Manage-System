@@ -1,6 +1,7 @@
 package com.example.demo.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public class UserUpsertRequest {
@@ -12,9 +13,11 @@ public class UserUpsertRequest {
     @Size(max = 128, message = "显示名称长度不能超过128位")
     private String displayName;
 
+    @Size(min = 6, max = 128, message = "密码长度须为6-128位")
     private String password;
 
     @NotBlank(message = "角色不能为空")
+    @Pattern(regexp = "^(ADMIN|STAFF)$", message = "角色只允许 ADMIN 或 STAFF")
     private String role;
 
     @Size(max = 30, message = "手机号长度不能超过30位")

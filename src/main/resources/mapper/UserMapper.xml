@@ -61,7 +61,6 @@
             phone,
             occupation,
             active,
-            password_hash,
             created_at,
             updated_at
         FROM users
@@ -79,7 +78,22 @@
                 AND active = #{active}
             </if>
         </where>
-        ORDER BY ${sortField} ${sortDirection}
+        ORDER BY
+        <choose>
+            <when test="sortField == 'username'">username</when>
+            <when test="sortField == 'display_name'">display_name</when>
+            <when test="sortField == 'role'">role</when>
+            <when test="sortField == 'phone'">phone</when>
+            <when test="sortField == 'occupation'">occupation</when>
+            <when test="sortField == 'active'">active</when>
+            <when test="sortField == 'created_at'">created_at</when>
+            <when test="sortField == 'updated_at'">updated_at</when>
+            <otherwise>id</otherwise>
+        </choose>
+        <choose>
+            <when test="sortDirection == 'asc'">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>
         LIMIT #{limit} OFFSET #{offset}
     </select>
 

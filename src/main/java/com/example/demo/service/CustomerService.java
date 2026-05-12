@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,7 @@ import com.example.demo.dto.CustomerImportRequest;
 import com.example.demo.dto.CustomerRequest;
 import com.example.demo.dto.CustomerResponse;
 import com.example.demo.dto.PageResponse;
+import com.example.demo.mapper.AppointmentMapper;
 import com.example.demo.mapper.CustomerMapper;
 
 @Service
@@ -22,11 +24,17 @@ public class CustomerService {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final int MAX_EXPORT_LIMIT = 10_000;
+    private static final Set<String> CUSTOMER_SORT_FIELD_WHITELIST = Set.of(
+            "id", "name", "phone", "email", "gender", "tags", "birthday", "created_at", "updated_at"
+    );
 
     private final CustomerMapper customerMapper;
+    private final AppointmentMapper appointmentMapper;
 
-    public CustomerService(CustomerMapper customerMapper) {
+    public CustomerService(CustomerMapper customerMapper, AppointmentMapper appointmentMapper) {
         this.customerMapper = customerMapper;
+        this.appointmentMapper = appointmentMapper;
     }
 
     public PageResponse<CustomerResponse> list(String keyword, Integer page, Integer size, String sort) {
@@ -40,11 +48,18 @@ public class CustomerService {
         if (sort != null && !sort.isEmpty()) {
             String[] parts = sort.split(",");
             if (parts.length >= 1 && !parts[0].trim().isEmpty()) {
-                sortField = parts[0].trim();
+                sortField = parts[0].trim().toLowerCase();
             }
-            if (parts.length >= 2 && "asc".equalsIgnoreCase(parts[1].trim())) {
-                sortDirection = "asc";
+            if (parts.length >= 2) {
+                sortDirection = parts[1].trim().toLowerCase();
             }
+        }
+
+        if (!CUSTOMER_SORT_FIELD_WHITELIST.contains(sortField)) {
+            sortField = "id";
+        }
+        if (!"asc".equals(sortDirection) && !"desc".equals(sortDirection)) {
+            sortDirection = "desc";
         }
 
         List<Customer> customers = customerMapper.findAll(keyword, pageSize, offset, sortField, sortDirection);
@@ -63,10 +78,24 @@ public class CustomerService {
     }
 
     public void delete(Long id) {
+        Customer customer = customerMapper.findById(id);
+        if (customer == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "客户不存在");
+        }
+        long activeAppointments = appointmentMapper.countActiveByCustomerId(id);
+        if (activeAppointments > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "该客户有 " + activeAppointments + " 条未完成预约，无法删除");
+        }
         customerMapper.deleteById(id);
     }
 
     public CustomerResponse update(Long id, CustomerRequest req) {
+        Customer existing = customerMapper.findById(id);
+        if (existing == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "客户不存在");
+        }
+
         Customer c = new Customer();
         c.setId(id);
         c.setName(req.getName());
@@ -80,9 +109,6 @@ public class CustomerService {
         customerMapper.update(c);
 
         Customer updated = customerMapper.findById(id);
-        if (updated == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "客户不存在");
-        }
         return toResponse(updated);
     }
 
@@ -106,8 +132,8 @@ public class CustomerService {
         return customerMapper.batchInsert(customers);
     }
 
-    public List<CustomerExportRow> listForExport() {
-        List<Customer> customers = customerMapper.findAll(null, Integer.MAX_VALUE, 0, "id", "asc");
+    public List<CustomerExportRow> listForExport(String keyword) {
+        List<Customer> customers = customerMapper.findAll(keyword, MAX_EXPORT_LIMIT, 0, "id", "asc");
         return customers.stream()
                 .map(this::toExportRow)
                 .collect(Collectors.toList());

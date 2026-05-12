@@ -59,7 +59,22 @@
                      OR tags LIKE CONCAT('%', #{keyword}, '%'))
             </if>
         </where>
-        ORDER BY ${sortField} ${sortDirection}
+        ORDER BY
+        <choose>
+            <when test="sortField == 'name'">name</when>
+            <when test="sortField == 'phone'">phone</when>
+            <when test="sortField == 'email'">email</when>
+            <when test="sortField == 'gender'">gender</when>
+            <when test="sortField == 'tags'">tags</when>
+            <when test="sortField == 'birthday'">birthday</when>
+            <when test="sortField == 'created_at'">created_at</when>
+            <when test="sortField == 'updated_at'">updated_at</when>
+            <otherwise>id</otherwise>
+        </choose>
+        <choose>
+            <when test="sortDirection == 'asc'">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>
         LIMIT #{limit} OFFSET #{offset}
     </select>
 

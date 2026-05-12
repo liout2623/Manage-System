@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.ServiceItemMapper">
+
+    <resultMap id="ServiceItemResult" type="com.example.demo.domain.ServiceItem">
+        <id column="id" property="id" />
+        <result column="name" property="name" />
+        <result column="description" property="description" />
+        <result column="price" property="price" />
+        <result column="duration_minutes" property="durationMinutes" />
+        <result column="active" property="active" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+    </resultMap>
+
+    <insert id="insert" parameterType="com.example.demo.domain.ServiceItem" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO services (name, description, price, duration_minutes, active, created_at, updated_at)
+        VALUES (#{name}, #{description}, #{price}, #{durationMinutes}, #{active}, NOW(), NOW())
+    </insert>
+
+    <update id="update" parameterType="com.example.demo.domain.ServiceItem">
+        UPDATE services
+        SET name = #{name},
+            description = #{description},
+            price = #{price},
+            duration_minutes = #{durationMinutes},
+            active = #{active},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM services WHERE id = #{id}
+    </delete>
+
+    <select id="findById" parameterType="long" resultMap="ServiceItemResult">
+        SELECT * FROM services WHERE id = #{id}
+    </select>
+
+    <select id="findAll" resultMap="ServiceItemResult">
+        SELECT *
+        FROM services
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (name LIKE CONCAT('%', #{keyword}, '%')
+                     OR description LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="active != null">
+                AND active = #{active}
+            </if>
+        </where>
+        ORDER BY
+        <choose>
+            <when test="sortField == 'name'">name</when>
+            <when test="sortField == 'price'">price</when>
+            <when test="sortField == 'duration_minutes'">duration_minutes</when>
+            <when test="sortField == 'created_at'">created_at</when>
+            <otherwise>id</otherwise>
+        </choose>
+        <choose>
+            <when test="sortDirection == 'asc'">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(1)
+        FROM services
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (name LIKE CONCAT('%', #{keyword}, '%')
+                     OR description LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="active != null">
+                AND active = #{active}
+            </if>
+        </where>
+    </select>
+</mapper>
