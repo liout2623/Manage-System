@@ -67,6 +67,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/services/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/services/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PATCH, "/api/services/**").hasRole("ADMIN")
+                // ── 理疗师-服务项目关联管理 ──
+                .requestMatchers(HttpMethod.GET, "/api/therapist-services/**").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/therapist-services").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/therapist-services/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

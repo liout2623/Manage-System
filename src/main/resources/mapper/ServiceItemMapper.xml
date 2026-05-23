@@ -48,6 +48,12 @@
             <if test="active != null">
                 AND active = #{active}
             </if>
+            <if test="therapistId != null">
+                AND EXISTS (
+                    SELECT 1 FROM therapist_services ts
+                    WHERE ts.service_id = services.id AND ts.therapist_id = #{therapistId}
+                )
+            </if>
         </where>
         ORDER BY
         <choose>
@@ -74,6 +80,12 @@
             </if>
             <if test="active != null">
                 AND active = #{active}
+            </if>
+            <if test="therapistId != null">
+                AND EXISTS (
+                    SELECT 1 FROM therapist_services ts
+                    WHERE ts.service_id = services.id AND ts.therapist_id = #{therapistId}
+                )
             </if>
         </where>
     </select>

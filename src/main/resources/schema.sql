@@ -71,6 +71,17 @@ CREATE TABLE IF NOT EXISTS appointments (
     INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 理疗师-服务项目关联表
+CREATE TABLE IF NOT EXISTS therapist_services (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    therapist_id BIGINT NOT NULL,
+    service_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (therapist_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_therapist_service (therapist_id, service_id)
+);
+
 -- 初始管理员账号（密码: admin123）
 INSERT IGNORE INTO users (id, username, password_hash, role, display_name, phone, occupation, active, created_at, updated_at)
 VALUES (

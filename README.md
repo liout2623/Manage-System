@@ -1,7 +1,7 @@
 # 医馆管理系统（MedSpa）— 后端 API 文档
 
 > 技术栈：Spring Boot 4.0.6 · Java 21 · MyBatis 3.0.3 · MySQL 8 · Spring Security + JWT
-> 更新时间：2026-05-13
+> 更新时间：2026-05-23
 
 ---
 
@@ -13,8 +13,9 @@
 - 用户管理（CRUD、角色控制、密码修改、账号注销、Excel 导出）
 - 客户管理（CRUD、批量导入、Excel 导出）
 - 健康档案（嵌套在客户资源下的 CRUD，自动记录操作人）
-- 服务项目（CRUD、启用/停用切换，GET 公开访问）
-- 预约管理（CRUD、状态流转、多维度筛选）
+- 服务项目（CRUD、启用/停用切换，GET 公开访问，STAFF 仅查看自己负责的项目）
+- 理疗师-服务项目关联（查询理疗师负责的项目、批量分配/移除）
+- 预约管理（CRUD、状态流转、营业时间/日期范围/冲突/归属校验、多维度筛选）
 
 ---
 
@@ -97,7 +98,7 @@
 | 401 | 未登录或 Token 无效 |
 | 403 | 权限不足 |
 | 404 | 资源不存在 |
-| 409 | 业务冲突（如用户名已存在） |
+| 409 | 业务冲突（如用户名已存在 / 预约时间冲突） |
 | 429 | 请求频率超限 |
 | 500 | 服务器内部错误 |
 
@@ -148,6 +149,7 @@
   GET    /api/appointments  /api/appointments/{id}
   POST   /api/appointments  PUT /api/appointments/{id}
   PATCH  /api/appointments/{id}/status
+  GET    /api/therapist-services/{therapistId}    ← 查询理疗师服务项目
 
 仅 ADMIN：
   POST   /api/users
@@ -159,7 +161,11 @@
   POST   /api/services  PUT /api/services/{id}
   DELETE /api/services/{id}  PATCH /api/services/{id}/toggle
   DELETE /api/appointments/{id}
+  POST   /api/therapist-services      ← 批量分配服务项目
+  DELETE /api/therapist-services/{id} ← 移除关联
 ```
+
+> **注意**：理疗师-服务项目关联的写操作（POST / DELETE）同时通过 SecurityConfig 和 `@PreAuthorize("hasRole('ADMIN')")` 双重保护。预约删除（DELETE /api/appointments/{id}）同样采用双重保护。
 
 ### 4.4 CORS 配置
 
@@ -261,7 +267,7 @@
 | username | String | 是 | @NotBlank, max=50 | 用户名 |
 | displayName | String | 是 | @NotBlank, max=128 | 显示名称 |
 | password | String | 新增时必填 | 6~128 | 密码（修改时为空则不改） |
-| role | String | 是 | @NotBlank, /^(ADMIN\|STAFF)$/ | 角色 |
+| role | String | 是 | @NotBlank, /^(ADMIN|STAFF)$/ | 角色 |
 | phone | String | 否 | max=30 | 手机号 |
 | occupation | String | 否 | max=255 | 职业 |
 | active | Boolean | 否 | - | 是否启用 |
@@ -326,7 +332,7 @@
 |------|------|------|------|------|
 | name | String | 是 | @NotBlank | 客户姓名 |
 | phone | String | 否 | max=30 | 手机号 |
-| email | String | 否 | @Email | 邮箱 |
+| email | String | 否 | @Email | 邮箱（需包含 `@`，空值通过） |
 | gender | String | 否 | - | 性别 |
 | tags | String | 否 | - | 标签 |
 | note | String | 否 | - | 备注 |
@@ -400,6 +406,7 @@
 ### 5.5 服务项目模块 — `/api/services`
 
 > GET 端点**公开访问**（适用于官网/大屏展示），写操作仅 ADMIN。
+> STAFF 角色用户登录后查看服务项目列表时，自动过滤为仅显示自己负责的项目（基于 therapist_services 关联表）。
 
 | 方法 | 路径 | 说明 | 权限 |
 |------|------|------|------|
@@ -416,13 +423,15 @@
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| keyword | String | 否 | 名称模糊搜索 |
+| keyword | String | 否 | 名称/描述模糊搜索 |
 | active | Boolean | 否 | 是否启用筛选 |
 | page | Integer | 否 | 页码 |
 | size | Integer | 否 | 每页条数 |
-| sort | String | 否 | 排序 |
+| sort | String | 否 | 排序（支持 id / name / price / duration_minutes / created_at） |
 
 **响应 data：** PageResponse\<ServiceResponse\>
+
+> **角色过滤逻辑**：未登录或 ADMIN 用户可查看所有服务项目；STAFF 用户仅返回通过 therapist_services 关联分配给自己的项目。
 
 #### `POST /api/services` / `PUT /api/services/{id}`
 
@@ -473,7 +482,7 @@
 | status | String | 否 | 预约状态 |
 | page | Integer | 否 | 页码 |
 | size | Integer | 否 | 每页条数 |
-| sort | String | 否 | 排序 |
+| sort | String | 否 | 排序（支持 appointment_time / created_at / id） |
 
 **响应 data：** PageResponse\<AppointmentResponse\>
 
@@ -491,19 +500,76 @@
 
 **响应 data：** AppointmentResponse（含 customerName / serviceName / therapistName / endTime）
 
+**业务校验规则：**
+
+| 校验项 | 说明 |
+|--------|------|
+| 实体存在性 | 客户、服务项目、理疗师必须存在 |
+| 理疗师角色 | 指定用户必须为 STAFF 角色且 active=true |
+| 理疗师-服务关联 | 理疗师必须已被分配所选服务项目（therapist_services 表） |
+| 营业时间 | 预约开始时间 ≥ 08:00，结束时间 ≤ 21:00 |
+| 日期范围 | 仅允许今天至未来 14 天内的日期 |
+| 时间冲突 | 同一理疗师同一时间段不可重复预约（排除自身） |
+| 过去时间 | 预约时间不能早于当前时间 |
+| STAFF 归属 | STAFF 用户只能为自己创建/修改预约，不能转给其他理疗师 |
+| 状态不可改 | 已完成(COMPLETED)或已取消(CANCELLED)的预约不可再修改 |
+
 #### `PATCH /api/appointments/{id}/status`
 
 **请求体 (AppointmentStatusRequest)：**
 
 | 字段 | 类型 | 必填 | 校验 | 说明 |
 |------|------|------|------|------|
-| status | String | 是 | @NotNull, /^(COMPLETED\|CANCELLED)$/ | 目标状态 |
+| status | String | 是 | @NotNull, /^(COMPLETED|CANCELLED)$/ | 目标状态 |
 
-> 预约状态流转：`SCHEDULED` → `COMPLETED` / `CANCELLED`（仅允许变更为这两种终态）
+> 预约状态流转：`BOOKED` → `COMPLETED` / `CANCELLED`（仅允许从 BOOKED 变更为这两种终态）
+>
+> STAFF 用户只能变更属于自己的预约状态。
 
 ---
 
-### 5.7 其他公开端点
+### 5.7 理疗师-服务项目关联模块 — `/api/therapist-services`
+
+> 管理理疗师与服务项目之间的多对多关联关系。管理员可为理疗师批量分配服务项目，所有登录用户可查询某理疗师负责的项目列表。
+
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| `GET` | `/api/therapist-services/{therapistId}` | 查询某理疗师负责的服务项目 | 已登录 |
+| `POST` | `/api/therapist-services` | 为理疗师批量分配服务项目 | ADMIN |
+| `DELETE` | `/api/therapist-services/{id}` | 移除某条关联记录 | ADMIN |
+
+#### `GET /api/therapist-services/{therapistId}`
+
+**路径参数：** therapistId（理疗师用户 ID）
+
+**响应 data：** List\<ServiceResponse\>（该理疗师负责的所有服务项目）
+
+#### `POST /api/therapist-services`
+
+**请求体 (TherapistServiceRequest)：**
+
+| 字段 | 类型 | 必填 | 校验 | 说明 |
+|------|------|------|------|------|
+| therapistId | Long | 是 | @NotNull | 理疗师用户 ID |
+| serviceIds | List\<Long\> | 是 | @NotEmpty | 服务项目 ID 列表 |
+
+**业务逻辑：**
+- 校验理疗师必须为 STAFF 角色
+- 校验所有服务项目必须存在且 active=true
+- **先删后插**：先删除该理疗师的所有旧关联，再批量插入新关联（事务保证）
+- 返回最新的关联项目列表
+
+**响应 data：** List\<ServiceResponse\>
+
+#### `DELETE /api/therapist-services/{id}`
+
+**路径参数：** id（therapist_services 表的主键 ID）
+
+移除单条关联记录。若记录不存在返回 404。
+
+---
+
+### 5.8 其他公开端点
 
 | 路径 | 说明 |
 |------|------|
@@ -579,7 +645,7 @@
 | therapistId | Long | 理疗师 ID |
 | appointmentTime | LocalDateTime | 预约时间 |
 | endTime | LocalDateTime | 结束时间（自动计算） |
-| status | String | 状态（SCHEDULED / COMPLETED / CANCELLED） |
+| status | String | 状态（BOOKED / COMPLETED / CANCELLED） |
 | note | String | 备注 |
 | customerName | String | 客户姓名（连表） |
 | serviceName | String | 服务名称（连表） |
@@ -587,9 +653,59 @@
 | createdAt | LocalDateTime | 创建时间 |
 | updatedAt | LocalDateTime | 修改时间 |
 
+### TherapistServiceRequest
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| therapistId | Long | 理疗师用户 ID（@NotNull） |
+| serviceIds | List\<Long\> | 服务项目 ID 列表（@NotEmpty） |
+
 ---
 
-## 7. 后端目录结构
+## 7. 数据库表结构
+
+### 7.1 表清单
+
+| 表名 | 说明 |
+|------|------|
+| users | 用户表（管理员 + 理疗师） |
+| customers | 客户表 |
+| services | 服务项目表 |
+| health_records | 健康档案表 |
+| appointments | 预约表 |
+| therapist_services | 理疗师-服务项目关联表 |
+
+### 7.2 therapist_services 关联表
+
+```sql
+CREATE TABLE IF NOT EXISTS therapist_services (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    therapist_id BIGINT NOT NULL,
+    service_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (therapist_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_therapist_service (therapist_id, service_id)
+);
+```
+
+- 同一理疗师与同一服务项目不可重复关联（UNIQUE KEY 保证）
+- 删除理疗师或服务项目时级联删除关联（ON DELETE CASCADE）
+
+### 7.3 初始数据
+
+系统启动时自动插入初始管理员账号（schema.sql 中 INSERT IGNORE）：
+
+| 字段 | 值 |
+|------|------|
+| username | admin |
+| password | admin123（BCrypt 加密存储） |
+| role | ADMIN |
+| displayName | 系统管理员 |
+
+---
+
+## 8. 后端目录结构
 
 ```text
 src/main/java/com/example/demo/
@@ -605,6 +721,7 @@ src/main/java/com/example/demo/
 │   ├── CustomerController.java   ← /api/customers（CRUD + 导入导出）
 │   ├── HealthRecordController.java ← /api/customers/{id}/records
 │   ├── ServiceItemController.java  ← /api/services（CRUD + toggle）
+│   ├── TherapistServiceController.java ← /api/therapist-services（查询、分配、移除）
 │   └── AppointmentController.java  ← /api/appointments（CRUD + 状态）
 ├── security/
 │   ├── JwtProperties.java        ← JWT 配置项（secret / expireSeconds / secure）
@@ -617,17 +734,25 @@ src/main/java/com/example/demo/
 │   ├── UserService.java
 │   ├── CustomerService.java
 │   ├── HealthRecordService.java
-│   ├── ServiceItemService.java
-│   ├── AppointmentService.java
+│   ├── ServiceItemService.java      ← 含 STAFF 角色按理疗师过滤逻辑
+│   ├── TherapistServiceService.java ← 理疗师-服务项目关联（批量分配/移除/查询）
+│   ├── AppointmentService.java      ← 含完整业务校验（营业时间/冲突/归属等）
 │   └── CaptchaService.java
 ├── mapper/
+│   ├── UserMapper.java
+│   ├── CustomerMapper.java
+│   ├── HealthRecordMapper.java
+│   ├── ServiceItemMapper.java       ← 含 therapistId 过滤（EXISTS 子查询）
+│   ├── TherapistServiceMapper.java  ← 理疗师-服务项目关联 CRUD
+│   └── AppointmentMapper.java
 ├── domain/
 │   ├── UserAccount.java
 │   ├── Customer.java
 │   ├── HealthRecord.java
 │   ├── ServiceItem.java
+│   ├── TherapistService.java        ← 理疗师-服务项目关联实体
 │   └── Appointment.java
-├── dto/                          ← 22 个 DTO 类
+├── dto/                              ← 25 个 DTO 类
 ├── exception/
 │   └── GlobalExceptionHandler.java ← 全局异常处理
 └── DemoApplication.java
@@ -635,7 +760,7 @@ src/main/java/com/example/demo/
 
 ---
 
-## 8. 配置说明
+## 9. 配置说明
 
 ```properties
 spring.application.name=demo
@@ -664,9 +789,9 @@ security.jwt.secure=false
 
 ---
 
-## 9. 启动方式
+## 10. 启动方式
 
-### 9.1 前置
+### 10.1 前置
 
 1. JDK 21+
 2. MySQL 8.x
@@ -676,7 +801,7 @@ security.jwt.secure=false
 CREATE DATABASE IF NOT EXISTS medspa CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-### 9.2 启动命令
+### 10.2 启动命令
 
 ```bash
 # Linux/macOS
@@ -686,14 +811,14 @@ CREATE DATABASE IF NOT EXISTS medspa CHARACTER SET utf8mb4 COLLATE utf8mb4_unico
 mvnw.cmd spring-boot:run
 ```
 
-### 9.3 Swagger
+### 10.3 Swagger
 
 - http://localhost:8080/swagger-ui/index.html
 - http://localhost:8080/swagger-ui.html
 
 ---
 
-## 10. 联调验证
+## 11. 联调验证
 
 ```bash
 # 1. 获取验证码
@@ -717,13 +842,29 @@ curl http://localhost:8080/api/users -b cookie.txt
 curl http://localhost:8080/api/users \
   -H "Authorization: Bearer <token>"
 
-# 6. 不带认证访问受保护接口 → 401
+# 6. 为理疗师分配服务项目（ADMIN）
+curl -X POST http://localhost:8080/api/therapist-services \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"therapistId":2,"serviceIds":[1,2,3]}'
+
+# 7. 查询理疗师负责的服务项目
+curl http://localhost:8080/api/therapist-services/2 \
+  -H "Authorization: Bearer <token>"
+
+# 8. 创建预约
+curl -X POST http://localhost:8080/api/appointments \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"customerId":1,"serviceId":1,"therapistId":2,"appointmentTime":"2026-05-24T10:00:00"}'
+
+# 9. 不带认证访问受保护接口 → 401
 curl http://localhost:8080/api/users
 ```
 
 ---
 
-## 11. 前后端分离建议
+## 12. 前后端分离建议
 
 推荐前端独立仓库（或同级目录）：
 
@@ -742,14 +883,15 @@ server: {
 
 ---
 
-## 12. 已知注意事项
+## 13. 已知注意事项
 
 1. `security.jwt.secret` 请在生产环境使用高强度随机密钥（不要提交真实密钥）
 2. 生产环境必须启用 HTTPS，并将 `security.jwt.secure` 设为 `true`
 3. CORS 当前仅允许 `http://localhost:5173`，部署时需修改
 4. 频率限制基于内存，重启后重置；集群部署需替换为 Redis 方案
-5. 当前为最小 JWT 方案，后续建议增加：
+5. 理疗师-服务项目关联采用**先删后插**策略，每次分配会清空旧关联再批量插入，不支持增量追加
+6. 预约的营业时间（08:00-21:00）和 14 天日期范围限制为硬编码常量，后续可提取为配置项
+7. 当前为最小 JWT 方案，后续建议增加：
    - Refresh Token（无感刷新）
-   - 更细粒度 RBAC（方法级 @PreAuthorize）
    - 审计日志
    - 单元/集成测试

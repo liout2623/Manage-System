@@ -9,13 +9,15 @@ import com.example.demo.domain.ServiceItem;
 public interface ServiceItemMapper {
     List<ServiceItem> findAll(@Param("keyword") String keyword,
                               @Param("active") Boolean active,
+                              @Param("therapistId") Long therapistId,
                               @Param("limit") int limit,
                               @Param("offset") int offset,
                               @Param("sortField") String sortField,
                               @Param("sortDirection") String sortDirection);
 
     long countAll(@Param("keyword") String keyword,
-                  @Param("active") Boolean active);
+                  @Param("active") Boolean active,
+                  @Param("therapistId") Long therapistId);
 
     ServiceItem findById(Long id);
 

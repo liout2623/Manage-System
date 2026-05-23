@@ -21,6 +21,7 @@ import com.example.demo.dto.PageResponse;
 import com.example.demo.mapper.AppointmentMapper;
 import com.example.demo.mapper.CustomerMapper;
 import com.example.demo.mapper.ServiceItemMapper;
+import com.example.demo.mapper.TherapistServiceMapper;
 import com.example.demo.mapper.UserMapper;
 
 @Service
@@ -35,15 +36,18 @@ public class AppointmentService {
     private final CustomerMapper customerMapper;
     private final ServiceItemMapper serviceItemMapper;
     private final UserMapper userMapper;
+    private final TherapistServiceMapper therapistServiceMapper;
 
     public AppointmentService(AppointmentMapper appointmentMapper,
                               CustomerMapper customerMapper,
                               ServiceItemMapper serviceItemMapper,
-                              UserMapper userMapper) {
+                              UserMapper userMapper,
+                              TherapistServiceMapper therapistServiceMapper) {
         this.appointmentMapper = appointmentMapper;
         this.customerMapper = customerMapper;
         this.serviceItemMapper = serviceItemMapper;
         this.userMapper = userMapper;
+        this.therapistServiceMapper = therapistServiceMapper;
     }
 
     // ===================== 查询 =====================
@@ -115,6 +119,9 @@ public class AppointmentService {
         UserAccount therapist = userMapper.findById(request.getTherapistId());
         validateTherapist(therapist);
 
+        // 校验理疗师是否负责所选服务项目
+        validateTherapistService(request.getTherapistId(), request.getServiceId());
+
         // STAFF 用户只能为自己创建预约
         ensureTherapistOwnership(currentUser, request.getTherapistId());
 
@@ -124,6 +131,9 @@ public class AppointmentService {
 
         // 校验营业时间
         validateBusinessHours(request.getAppointmentTime(), endTime);
+
+        // 校验日期范围（今天至未来14天）
+        validateAppointmentDateRange(request.getAppointmentTime());
 
         // 冲突检测
         ensureNoConflict(request.getTherapistId(), request.getAppointmentTime(), endTime, null);
@@ -174,6 +184,9 @@ public class AppointmentService {
         UserAccount therapist = userMapper.findById(request.getTherapistId());
         validateTherapist(therapist);
 
+        // 校验理疗师是否负责所选服务项目
+        validateTherapistService(request.getTherapistId(), request.getServiceId());
+
         // STAFF 用户不能将预约转给其他理疗师
         ensureTherapistOwnership(currentUser, request.getTherapistId());
 
@@ -183,6 +196,9 @@ public class AppointmentService {
 
         // 校验营业时间
         validateBusinessHours(request.getAppointmentTime(), endTime);
+
+        // 校验日期范围（今天至未来14天）
+        validateAppointmentDateRange(request.getAppointmentTime());
 
         // 冲突检测（排除自身）
         ensureNoConflict(request.getTherapistId(), request.getAppointmentTime(), endTime, id);
@@ -268,7 +284,21 @@ public class AppointmentService {
     }
 
     /**
-     * 校验理疗师：必须是 ADMIN 或 STAFF 角色且处于活跃状态
+     * 校验预约日期范围：仅允许今天至未来14天内的日期
+     */
+    private void validateAppointmentDateRange(LocalDateTime appointmentTime) {
+        LocalDate appointmentDate = appointmentTime.toLocalDate();
+        LocalDate today = LocalDate.now();
+        if (appointmentDate.isBefore(today)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "预约日期不能早于今天");
+        }
+        if (appointmentDate.isAfter(today.plusDays(14))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "预约日期仅限今天起至未来14天内");
+        }
+    }
+
+    /**
+     * 校验理疗师：必须是 STAFF 角色且处于活跃状态
      */
     private void validateTherapist(UserAccount therapist) {
         if (therapist == null) {
@@ -278,8 +308,18 @@ public class AppointmentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "指定的理疗师已停用");
         }
         String role = therapist.getRole();
-        if (!"ADMIN".equals(role) && !"STAFF".equals(role)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "指定的用户不是理疗师");
+        if (!"STAFF".equals(role)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "理疗师必须是 STAFF 角色");
+        }
+    }
+
+    /**
+     * 校验理疗师是否负责所选服务项目
+     */
+    private void validateTherapistService(Long therapistId, Long serviceId) {
+        boolean exists = therapistServiceMapper.existsByTherapistIdAndServiceId(therapistId, serviceId);
+        if (!exists) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "该理疗师不负责所选服务项目");
         }
     }
 

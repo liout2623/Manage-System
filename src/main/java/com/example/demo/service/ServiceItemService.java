@@ -5,16 +5,19 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.example.demo.domain.ServiceItem;
+import com.example.demo.domain.UserAccount;
 import com.example.demo.dto.PageResponse;
 import com.example.demo.dto.ServiceRequest;
 import com.example.demo.dto.ServiceResponse;
 import com.example.demo.mapper.AppointmentMapper;
 import com.example.demo.mapper.ServiceItemMapper;
+import com.example.demo.mapper.UserMapper;
 
 @Service
 public class ServiceItemService {
@@ -25,10 +28,12 @@ public class ServiceItemService {
 
     private final ServiceItemMapper serviceItemMapper;
     private final AppointmentMapper appointmentMapper;
+    private final UserMapper userMapper;
 
-    public ServiceItemService(ServiceItemMapper serviceItemMapper, AppointmentMapper appointmentMapper) {
+    public ServiceItemService(ServiceItemMapper serviceItemMapper, AppointmentMapper appointmentMapper, UserMapper userMapper) {
         this.serviceItemMapper = serviceItemMapper;
         this.appointmentMapper = appointmentMapper;
+        this.userMapper = userMapper;
     }
 
     public PageResponse<ServiceResponse> list(String keyword, Integer page, Integer size, String sort, Boolean active) {
@@ -55,8 +60,15 @@ public class ServiceItemService {
             sortDirection = "desc";
         }
 
-        List<ServiceItem> services = serviceItemMapper.findAll(keyword, active, pageSize, offset, sortField, sortDirection);
-        long total = serviceItemMapper.countAll(keyword, active);
+        // 根据当前登录用户角色决定 therapistId 过滤
+        Long therapistId = null;
+        UserAccount currentUser = getCurrentUser();
+        if (currentUser != null && "STAFF".equals(currentUser.getRole())) {
+            therapistId = currentUser.getId();
+        }
+
+        List<ServiceItem> services = serviceItemMapper.findAll(keyword, active, therapistId, pageSize, offset, sortField, sortDirection);
+        long total = serviceItemMapper.countAll(keyword, active, therapistId);
         List<ServiceResponse> items = services.stream().map(this::toResponse).collect(Collectors.toList());
         return new PageResponse<>(total, items);
     }
@@ -134,5 +146,17 @@ public class ServiceItemService {
         response.setCreatedAt(item.getCreatedAt());
         response.setUpdatedAt(item.getUpdatedAt());
         return response;
+    }
+
+    /**
+     * 获取当前登录用户（未登录或匿名用户返回 null）
+     */
+    private UserAccount getCurrentUser() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
+            return null;
+        }
+        String username = auth.getName();
+        return userMapper.findByUsername(username);
     }
 }
